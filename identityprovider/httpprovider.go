@@ -7,6 +7,7 @@ import (
 	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/go-iden3-crypto/babyjub"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 type KeyStore interface{}
@@ -45,6 +46,7 @@ type HttpProvider struct {
 	Username string
 	Password string
 	client   *sling.Sling
+	validate *validator.Validate
 }
 
 type HttpProviderParams struct {
@@ -59,7 +61,8 @@ func NewHttpProvider(params HttpProviderParams) *HttpProvider {
 		url += "/"
 	}
 	client := sling.New().Base(url)
-	return &HttpProvider{Url: url, Username: params.Username, Password: params.Password, client: client}
+	return &HttpProvider{Url: url, Username: params.Username, Password: params.Password,
+		client: client, validate: validator.New()}
 }
 
 type HttpIdentity struct {
@@ -70,13 +73,12 @@ type HttpIdentity struct {
 func (p *HttpProvider) request(s *sling.Sling, res interface{}) error {
 	var serverError ServerError
 	resp, err := s.Receive(res, &serverError)
-	if resp != nil {
-		println(">>>", resp.Request.URL.Path)
-	}
 	if err == nil {
 		defer resp.Body.Close()
 		if !(200 <= resp.StatusCode && resp.StatusCode < 300) {
 			err = serverError
+		} else {
+			err = p.validate.Struct(res)
 		}
 	}
 	return err
@@ -88,7 +90,7 @@ type CreateIdentityReq struct {
 }
 
 type CreateIdentityRes struct {
-	Id *core.ID `json:"id"`
+	Id *core.ID `json:"id" validate:"required"`
 	// ProofOpKey string `json:"proofOpKey"`
 }
 
