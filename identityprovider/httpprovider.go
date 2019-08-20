@@ -28,8 +28,8 @@ type Identity interface {
 	AddClaims(claim []*merkletree.Entry) error
 	GenProofClaim(claim *merkletree.Entry) (core.ProofClaim, error)
 	GenProofClaims(claims []*merkletree.Entry) ([]core.ProofClaim, error)
-	// EmittedClaims() (Array<Claim>, error)
-	// ReceivedClaims() (Array<(Claim, ProofClaim)>, error)
+	EmittedClaims() ([]*merkletree.Entry, error)
+	ReceivedClaims() ([]*merkletree.Entry, error)
 	// DataObjects() ([]Data, error)
 }
 
@@ -45,8 +45,12 @@ type HttpProvider struct {
 	Url      string
 	Username string
 	Password string
-	client   *sling.Sling
+	_client  *sling.Sling
 	validate *validator.Validate
+}
+
+func (p *HttpProvider) client() *sling.Sling {
+	return p._client.New()
 }
 
 type HttpProviderParams struct {
@@ -62,7 +66,7 @@ func NewHttpProvider(params HttpProviderParams) *HttpProvider {
 	}
 	client := sling.New().Base(url)
 	return &HttpProvider{Url: url, Username: params.Username, Password: params.Password,
-		client: client, validate: validator.New()}
+		_client: client, validate: validator.New()}
 }
 
 func (p *HttpProvider) request(s *sling.Sling, res interface{}) error {
@@ -72,7 +76,7 @@ func (p *HttpProvider) request(s *sling.Sling, res interface{}) error {
 		defer resp.Body.Close()
 		if !(200 <= resp.StatusCode && resp.StatusCode < 300) {
 			err = serverError
-		} else {
+		} else if res != nil {
 			err = p.validate.Struct(res)
 		}
 	}
@@ -84,11 +88,6 @@ type CreateIdentityReq struct {
 	ExtraGenesisClaims []*merkletree.Entry `json:"extraGenesisClaims"`
 }
 
-type CreateIdentityRes struct {
-	Id *core.ID `json:"id" validate:"required"`
-	// ProofOpKey string `json:"proofOpKey"`
-}
-
 func (p *HttpProvider) CreateIdentity(keyStore KeyStore, kOp *babyjub.PublicKey,
 	extraGenesisClaims []*merkletree.Entry) (*core.ID, error) {
 
@@ -98,8 +97,10 @@ func (p *HttpProvider) CreateIdentity(keyStore KeyStore, kOp *babyjub.PublicKey,
 		ExtraGenesisClaims: extraGenesisClaims,
 	}
 
-	var createIdentityRes CreateIdentityRes
-	err := p.request(p.client.Path("identity").Post("").BodyJSON(createIdentityReq), &createIdentityRes)
+	var createIdentityRes struct {
+		Id *core.ID `json:"id" validate:"required"`
+	}
+	err := p.request(p.client().Path("identity").Post("").BodyJSON(createIdentityReq), &createIdentityRes)
 	if err != nil {
 		return nil, err
 	}
@@ -110,12 +111,16 @@ func (p *HttpProvider) CreateIdentity(keyStore KeyStore, kOp *babyjub.PublicKey,
 type HttpIdentity struct {
 	provider *HttpProvider
 	id       *core.ID
-	client   *sling.Sling
+	_client  *sling.Sling
 }
 
 func (p *HttpProvider) LoadIdentity(id *core.ID, keyStore KeyStore) (*HttpIdentity, error) {
-	client := p.client.Path(fmt.Sprintf("id/%s/", id.String()))
-	return &HttpIdentity{provider: p, id: id, client: client}, nil
+	client := p.client().Path(fmt.Sprintf("id/%s/", id.String()))
+	return &HttpIdentity{provider: p, id: id, _client: client}, nil
+}
+
+func (i *HttpIdentity) client() *sling.Sling {
+	return i._client.New()
 }
 
 func (i *HttpIdentity) ID() *core.ID {
@@ -128,11 +133,16 @@ type ClaimReq struct {
 
 func (i *HttpIdentity) AddClaim(claim *merkletree.Entry) error {
 	claimReq := ClaimReq{Claim: claim}
-	return i.provider.request(i.client.Path("claim").Post("").BodyJSON(claimReq), nil)
+	return i.provider.request(i.client().Path("claim").Post("").BodyJSON(claimReq), nil)
 }
 
-func (i *HttpIdentity) AddClaims(claim []*merkletree.Entry) error {
-	return fmt.Errorf("TODO")
+type ClaimsReq struct {
+	Claims []*merkletree.Entry `json:"claims" binding:"required"`
+}
+
+func (i *HttpIdentity) AddClaims(claims []*merkletree.Entry) error {
+	claimsReq := ClaimsReq{Claims: claims}
+	return i.provider.request(i.client().Path("claims").Post("").BodyJSON(claimsReq), nil)
 }
 
 func (i *HttpIdentity) GenProofClaim(claim *merkletree.Entry) (*core.ProofClaim, error) {
@@ -141,4 +151,20 @@ func (i *HttpIdentity) GenProofClaim(claim *merkletree.Entry) (*core.ProofClaim,
 
 func (i *HttpIdentity) GenProofClaims(claims []*merkletree.Entry) ([]core.ProofClaim, error) {
 	return nil, fmt.Errorf("TODO")
+}
+
+func (i *HttpIdentity) EmittedClaims() ([]*merkletree.Entry, error) {
+	var emittedClaims struct {
+		Claims []*merkletree.Entry `json:"emittedClaims" binding:"required"`
+	}
+	err := i.provider.request(i.client().Path("claims/emitted").Get(""), &emittedClaims)
+	return emittedClaims.Claims, err
+}
+
+func (i *HttpIdentity) ReceivedClaims() ([]*merkletree.Entry, error) {
+	var receivedClaims struct {
+		Claims []*merkletree.Entry `json:"receivedClaims" binding:"required"`
+	}
+	err := i.provider.request(i.client().Path("claims/received").Get(""), &receivedClaims)
+	return receivedClaims.Claims, err
 }
