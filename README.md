@@ -34,3 +34,18 @@ assert.Equal(t, "119h9u2nXbtg5TmPsMm8W5bDkmVZhdS6TgKMvNWPU3", identity.ID.String
 
 // [WIP]
 ```
+
+## Gomobile
+
+Using go1.12.7 linux/amd64
+
+```
+go mod vendor
+gomobile init
+ln -s ~/git/iden3/go-iden3-light-wallet ~/go/src/github.com/iden3/
+GO111MODULE=off go get github.com/ethereum/go-ethereum
+cp -r \
+  "${GOPATH}/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1" \
+  "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"
+GO111MODULE=off gomobile bind -target=android github.com/iden3/go-iden3-light-wallet/identityprovider
+```

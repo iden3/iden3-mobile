@@ -3,7 +3,7 @@ package identityprovider
 import (
 	"testing"
 
-	"github.com/iden3/go-iden3-core/merkletree"
+	// "github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/go-iden3-crypto/babyjub"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,7 @@ func TestCreateIdentity(t *testing.T) {
 	assert.Nil(t, err)
 
 	keyStore := 0
-	id, err := provider.CreateIdentity(keyStore, &kOp, []*merkletree.Entry{})
+	id, err := provider.CreateIdentity(keyStore, &kOp, nil)
 	assert.Nil(t, err)
 	assert.Equal(t, "119h9u2nXbtg5TmPsMm8W5bDkmVZhdS6TgKMvNWPU3", id.String())
 }

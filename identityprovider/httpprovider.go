@@ -23,7 +23,7 @@ type ImportParams struct {
 type Identity interface {
 	Export(exportFilePath string, exportParams ExportParams) error
 	Import(importFilePath string, importParams ImportParams) error
-	ID() (*core.ID, error)
+	ID() *core.ID
 	AddClaim(claim *merkletree.Entry) error
 	AddClaims(claim []*merkletree.Entry) error
 	GenProofClaim(claim *merkletree.Entry) (core.ProofClaim, error)
@@ -65,11 +65,6 @@ func NewHttpProvider(params HttpProviderParams) *HttpProvider {
 		client: client, validate: validator.New()}
 }
 
-type HttpIdentity struct {
-	Provider *HttpProvider
-	ID       core.ID
-}
-
 func (p *HttpProvider) request(s *sling.Sling, res interface{}) error {
 	var serverError ServerError
 	resp, err := s.Receive(res, &serverError)
@@ -86,7 +81,7 @@ func (p *HttpProvider) request(s *sling.Sling, res interface{}) error {
 
 type CreateIdentityReq struct {
 	ClaimAuthKOp       *merkletree.Entry   `json:"claimAuthKOp" binding:"required"`
-	ExtraGenesisClaims []*merkletree.Entry `json:"extraGenesisClaims" binding:"required"`
+	ExtraGenesisClaims []*merkletree.Entry `json:"extraGenesisClaims"`
 }
 
 type CreateIdentityRes struct {
@@ -112,6 +107,38 @@ func (p *HttpProvider) CreateIdentity(keyStore KeyStore, kOp *babyjub.PublicKey,
 	return createIdentityRes.Id, nil
 }
 
+type HttpIdentity struct {
+	provider *HttpProvider
+	id       *core.ID
+	client   *sling.Sling
+}
+
 func (p *HttpProvider) LoadIdentity(id *core.ID, keyStore KeyStore) (*HttpIdentity, error) {
+	client := p.client.Path(fmt.Sprintf("id/%s/", id.String()))
+	return &HttpIdentity{provider: p, id: id, client: client}, nil
+}
+
+func (i *HttpIdentity) ID() *core.ID {
+	return i.id
+}
+
+type ClaimReq struct {
+	Claim *merkletree.Entry `json:"claim" binding:"required"`
+}
+
+func (i *HttpIdentity) AddClaim(claim *merkletree.Entry) error {
+	claimReq := ClaimReq{Claim: claim}
+	return i.provider.request(i.client.Path("claim").Post("").BodyJSON(claimReq), nil)
+}
+
+func (i *HttpIdentity) AddClaims(claim []*merkletree.Entry) error {
+	return fmt.Errorf("TODO")
+}
+
+func (i *HttpIdentity) GenProofClaim(claim *merkletree.Entry) (*core.ProofClaim, error) {
+	return nil, fmt.Errorf("TODO")
+}
+
+func (i *HttpIdentity) GenProofClaims(claims []*merkletree.Entry) ([]core.ProofClaim, error) {
 	return nil, fmt.Errorf("TODO")
 }
