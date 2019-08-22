@@ -5,12 +5,23 @@ import (
 
 	"github.com/dghubble/sling"
 	"github.com/iden3/go-iden3-core/core"
+	"github.com/iden3/go-iden3-core/keystore"
 	"github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/go-iden3-crypto/babyjub"
 	"gopkg.in/go-playground/validator.v9"
 )
 
-type KeyStore interface{}
+type KeyStorer interface {
+	SignBaby(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error)
+}
+
+type KeyStore struct {
+	*keystore.KeyStore
+}
+
+func (ks *KeyStore) SignBaby(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error) {
+	return ks.Sign(pk, msg)
+}
 
 type ExportParams struct {
 	Passphrase string
@@ -88,7 +99,7 @@ type CreateIdentityReq struct {
 	ExtraGenesisClaims []*merkletree.Entry `json:"extraGenesisClaims"`
 }
 
-func (p *HttpProvider) CreateIdentity(keyStore KeyStore, kOp *babyjub.PublicKey,
+func (p *HttpProvider) CreateIdentity(keyStore KeyStorer, kOp *babyjub.PublicKey,
 	extraGenesisClaims []*merkletree.Entry) (*core.ID, error) {
 
 	claimAuthKOp := core.NewClaimAuthorizeKSignBabyJub(kOp)
@@ -110,13 +121,18 @@ func (p *HttpProvider) CreateIdentity(keyStore KeyStore, kOp *babyjub.PublicKey,
 
 type HttpIdentity struct {
 	provider *HttpProvider
+	kOp      *babyjub.PublicKeyComp
+	keyStore KeyStorer
 	id       *core.ID
 	_client  *sling.Sling
 }
 
-func (p *HttpProvider) LoadIdentity(id *core.ID, keyStore KeyStore) (*HttpIdentity, error) {
+func (p *HttpProvider) LoadIdentity(id *core.ID, kOp *babyjub.PublicKey,
+	keyStore KeyStorer) (*HttpIdentity, error) {
 	client := p.client().Path(fmt.Sprintf("id/%s/", id.String()))
-	return &HttpIdentity{provider: p, id: id, _client: client}, nil
+	kOpComp := kOp.Compress()
+	return &HttpIdentity{provider: p, kOp: &kOpComp, keyStore: keyStore,
+		id: id, _client: client}, nil
 }
 
 func (i *HttpIdentity) client() *sling.Sling {

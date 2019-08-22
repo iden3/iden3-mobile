@@ -7,7 +7,9 @@ import (
 	"os"
 	"testing"
 
+	common3 "github.com/iden3/go-iden3-core/common"
 	"github.com/iden3/go-iden3-core/core"
+	"github.com/iden3/go-iden3-core/keystore"
 	"github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/go-iden3-crypto/babyjub"
 
@@ -23,9 +25,10 @@ func init() {
 	}
 }
 
-var keyStore interface{}
+var keyStore *KeyStore
 var provider *HttpProvider
-var kOp babyjub.PublicKey
+var kOp *babyjub.PublicKey
+var kOpComp *babyjub.PublicKeyComp
 var id *core.ID
 var identity *HttpIdentity
 
@@ -33,10 +36,28 @@ func setup() {
 	params := HttpProviderParams{Url: "http://127.0.0.1:25000/api/unstable"}
 	provider = NewHttpProvider(params)
 
-	kOpStr := "0x117f0a278b32db7380b078cdb451b509a2ed591664d1bac464e8c35a90646796"
-	if err := kOp.UnmarshalText([]byte(kOpStr)); err != nil {
+	skHex := []byte("febbb6a0693ed405b1ae48c014ccac333234fcf11e5744a1409b02c32b9a44e5")
+	var sk babyjub.PrivateKey
+	if err := common3.HexDecodeInto(sk[:], skHex); err != nil {
 		panic(err)
 	}
+
+	storage := keystore.MemStorage{}
+	ks, err := keystore.NewKeyStore(&storage, keystore.LightKeyStoreParams)
+	if err != nil {
+		panic(err)
+	}
+	pass := []byte("passphrase")
+	kOpComp, err = ks.ImportKey(sk, pass)
+	if err != nil {
+		panic(err)
+	}
+	kOp, err = kOpComp.Decompress()
+	if err != nil {
+		panic(err)
+	}
+	ks.UnlockKey(kOpComp, pass)
+	keyStore = &KeyStore{ks}
 }
 
 func teardown() {
@@ -60,14 +81,14 @@ func TestIntNotificationService(t *testing.T) {
 
 func testCreateIdentity(t *testing.T) {
 	var err error
-	id, err = provider.CreateIdentity(keyStore, &kOp, nil)
+	id, err = provider.CreateIdentity(keyStore, kOp, nil)
 	require.Nil(t, err)
-	require.Equal(t, "119h9u2nXbtg5TmPsMm8W5bDkmVZhdS6TgKMvNWPU3", id.String())
+	require.Equal(t, "11AzwiXcYzf6S7AJd41iutEvPC8xup7BFfzjYB2HU", id.String())
 }
 
 func testLoadIdentity(t *testing.T) {
 	var err error
-	identity, err = provider.LoadIdentity(id, keyStore)
+	identity, err = provider.LoadIdentity(id, kOp, keyStore)
 	require.Nil(t, err)
 }
 
