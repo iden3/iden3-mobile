@@ -6,7 +6,7 @@ import (
 
 	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/merkletree"
-	"go-iden3-light-wallet/identityprovider"
+	"github.com/iden3/go-iden3-light-wallet/identityprovider"
 )
 
 type ID []byte
@@ -86,20 +86,25 @@ type Identity struct {
 	iden identityprovider.Identity
 }
 
-func (i *Identity) Export(exportFilePath string, exportParams identityprovider.ExportParams) error {
-	return i.iden.Export(exportFilePath, exportParams)
+func (i *Identity) Export(exportFilePath string, passphrase string) error {
+	return i.iden.Export(exportFilePath, identityprovider.ExportParams{
+		Passphrase: passphrase,
+	})
 }
 
-func (i *Identity) Import(importFilePath string, importParams identityprovider.ImportParams) error {
-	return i.iden.Import(importFilePath, importParams)
+func (i *Identity) Import(importFilePath string, passphrase string) error {
+	return i.iden.Import(importFilePath, identityprovider.ImportParams{
+		Passphrase: passphrase,
+	})
 }
 
-func (i *Identity) ID() ID {
+func (i *Identity) ID() []byte {
 	return IDFromCore(i.iden.ID())
 }
 
-func (i *Identity) AddClaim(_claim Entry) error {
-	claim, err := _claim.toCore()
+func (i *Identity) AddClaim(_claim []byte) error {
+	__claim := Entry(_claim)
+	claim, err := __claim.toCore()
 	if err != nil {
 		return err
 	}
@@ -114,8 +119,9 @@ func (i *Identity) AddClaims(_claims *BytesArray) error {
 	return i.iden.AddClaims(claims)
 }
 
-func (i *Identity) GenProofClaim(_claim Entry) (ProofClaim, error) {
-	claim, err := _claim.toCore()
+func (i *Identity) GenProofClaim(_claim []byte) ([]byte, error) {
+	__claim := Entry(_claim)
+	claim, err := __claim.toCore()
 	if err != nil {
 		return nil, err
 	}
@@ -170,8 +176,9 @@ func (i *Identity) ReceivedClaims() (*BytesArray, error) {
 	return _claims, nil
 }
 
-func (i *Identity) VerifyProofClaim(_proof ProofClaim) (bool, error) {
-	proof, err := _proof.toCore()
+func (i *Identity) VerifyProofClaim(_proof []byte) (bool, error) {
+	__proof := ProofClaim(_proof)
+	proof, err := __proof.toCore()
 	if err != nil {
 		return false, err
 	}

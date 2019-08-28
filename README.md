@@ -44,6 +44,7 @@ go mod vendor
 gomobile init
 ln -s ~/git/iden3/go-iden3-light-wallet ~/go/src/github.com/iden3/
 GO111MODULE=off go get github.com/ethereum/go-ethereum
+ln -s $PWD ~/go/src/github.com/iden3/
 cp -r \
   "${GOPATH}/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1" \
   "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"
