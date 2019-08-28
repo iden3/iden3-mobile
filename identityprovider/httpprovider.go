@@ -36,12 +36,13 @@ type Identity interface {
 	Import(importFilePath string, importParams ImportParams) error
 	ID() *core.ID
 	AddClaim(claim *merkletree.Entry) error
-	AddClaims(claim []*merkletree.Entry) error
-	GenProofClaim(claim *merkletree.Entry) (core.ProofClaim, error)
+	AddClaims(claims []*merkletree.Entry) error
+	GenProofClaim(claim *merkletree.Entry) (*core.ProofClaim, error)
 	GenProofClaims(claims []*merkletree.Entry) ([]core.ProofClaim, error)
 	EmittedClaims() ([]*merkletree.Entry, error)
 	ReceivedClaims() ([]*merkletree.Entry, error)
 	// DataObjects() ([]Data, error)
+	VerifyProofClaim(proof *core.ProofClaim) (bool, error)
 }
 
 type ServerError struct {
@@ -183,4 +184,8 @@ func (i *HttpIdentity) ReceivedClaims() ([]*merkletree.Entry, error) {
 	}
 	err := i.provider.request(i.client().Path("claims/received").Get(""), &receivedClaims)
 	return receivedClaims.Claims, err
+}
+
+func (i *HttpIdentity) VerifyProofClaim(proof *core.ProofClaim) (bool, error) {
+	return false, fmt.Errorf("TODO")
 }
