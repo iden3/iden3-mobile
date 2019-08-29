@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"go-iden3-light-wallet/identityprovider"
+
 	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/go-iden3-crypto/babyjub"
-	"github.com/iden3/go-iden3-light-wallet/identityprovider"
 )
 
 type ExportParams identityprovider.ExportParams
@@ -16,7 +17,7 @@ type HttpProviderParams identityprovider.HttpProviderParams
 
 // Interface that is gomobile-friendly
 type KeyStorerGoMobile interface {
-	SignBaby(pk []byte, msg []byte) ([]byte, error)
+	SignBabyRaw(pk []byte, msg []byte) ([]byte, error)
 }
 
 // Implementation of the indentityprovider.KeyStore that wraps a struct that implements KeyStorerGoMobile
@@ -30,14 +31,14 @@ func NewKeyStoreFromGoMobile(keyStore KeyStorerGoMobile) *KeyStoreFromGoMobile {
 	}
 }
 
-// func (ks *KeyStoreGoMobile) SignBaby(_pk []byte, msg []byte) ([]byte, error) {
+// func (ks *KeyStoreGoMobile) SignBabyRaw(_pk []byte, msg []byte) ([]byte, error) {
 // 	__pk := PublicKey(_pk)
 // 	pk, err := __pk.toCore()
-// 	sig, err := ks.keyStore.SignBaby(pk)
+// 	sig, err := ks.keyStore.SignBabyRaw(pk)
 // 	return sig[:], err
 // }
-func (ks *KeyStoreFromGoMobile) SignBaby(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error) {
-	_sig, err := ks.keyStore.SignBaby(pk[:], msg)
+func (ks *KeyStoreFromGoMobile) SignBabyRaw(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error) {
+	_sig, err := ks.keyStore.SignBabyRaw(pk[:], msg)
 	if err != nil {
 		return nil, err
 	}

@@ -30,6 +30,7 @@ var provider *HttpProvider
 var kOp *babyjub.PublicKey
 var kOpComp *babyjub.PublicKeyComp
 var id *core.ID
+var proofKOp *core.ProofClaimGenesis
 var identity *HttpIdentity
 
 func setup() {
@@ -81,14 +82,14 @@ func TestIntNotificationService(t *testing.T) {
 
 func testCreateIdentity(t *testing.T) {
 	var err error
-	id, err = provider.CreateIdentity(keyStore, kOp, nil)
+	id, proofKOp, err = provider.CreateIdentity(keyStore, kOp, nil)
 	require.Nil(t, err)
 	require.Equal(t, "11AzwiXcYzf6S7AJd41iutEvPC8xup7BFfzjYB2HU", id.String())
 }
 
 func testLoadIdentity(t *testing.T) {
 	var err error
-	identity, err = provider.LoadIdentity(id, kOp, keyStore)
+	identity, err = provider.LoadIdentity(id, kOp, proofKOp, keyStore)
 	require.Nil(t, err)
 }
 
