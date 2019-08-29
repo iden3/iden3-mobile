@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"go-iden3-light-wallet/identityprovider"
-
 	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/go-iden3-crypto/babyjub"
+	"go-iden3-light-wallet/identityprovider"
 )
 
 type ExportParams identityprovider.ExportParams
@@ -31,12 +30,6 @@ func NewKeyStoreFromGoMobile(keyStore KeyStorerGoMobile) *KeyStoreFromGoMobile {
 	}
 }
 
-// func (ks *KeyStoreGoMobile) SignBabyRaw(_pk []byte, msg []byte) ([]byte, error) {
-// 	__pk := PublicKey(_pk)
-// 	pk, err := __pk.toCore()
-// 	sig, err := ks.keyStore.SignBabyRaw(pk)
-// 	return sig[:], err
-// }
 func (ks *KeyStoreFromGoMobile) SignBabyRaw(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error) {
 	_sig, err := ks.keyStore.SignBabyRaw(pk[:], msg)
 	if err != nil {
@@ -157,7 +150,8 @@ func (p *HttpProvider) CreateIdentity(_keyStore KeyStorerGoMobile, _kOp []byte,
 	__kOp := PublicKey(_kOp)
 	kOp, err := __kOp.toCore()
 	keyStore := NewKeyStoreFromGoMobile(_keyStore)
-	id, err := p.provider.CreateIdentity(keyStore, kOp, extraGenesisClaims)
+	// TODO: Use proofKOp
+	id, _, err := p.provider.CreateIdentity(keyStore, kOp, extraGenesisClaims)
 	if err != nil {
 		return nil, err
 	}

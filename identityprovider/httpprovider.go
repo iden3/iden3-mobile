@@ -2,27 +2,38 @@ package identityprovider
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/dghubble/sling"
 	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/keystore"
 	"github.com/iden3/go-iden3-core/merkletree"
-	"github.com/iden3/go-iden3-core/services/claimsrv"
-	"github.com/iden3/go-iden3-core/services/identityagentsrv"
+	"github.com/iden3/go-iden3-core/utils"
+	// "github.com/iden3/go-iden3-core/services/claimsrv"
+	// "github.com/iden3/go-iden3-core/services/identityagentsrv"
 	"github.com/iden3/go-iden3-crypto/babyjub"
 	"gopkg.in/go-playground/validator.v9"
 )
 
 type KeyStorer interface {
-	SignBaby(pk *babyjub.PublicKeyComp, prefix keystore.PrefixType, msg []byte) (*babyjub.SignatureComp, int64, error)
+	SignBabyRaw(pk *babyjub.PublicKeyComp, rawMsg []byte) (*babyjub.SignatureComp, error)
+}
+
+func SignBaby(ks KeyStorer, pk *babyjub.PublicKeyComp, prefix keystore.PrefixType,
+	rawMsg []byte) (*babyjub.SignatureComp, int64, error) {
+	date := time.Now().Unix()
+	msg := append(prefix, utils.Uint64ToEthBytes(uint64(date))...)
+	msg = append(msg, rawMsg...)
+	sig, err := ks.SignBabyRaw(pk, msg)
+	return sig, date, err
 }
 
 type KeyStore struct {
 	*keystore.KeyStore
 }
 
-func (ks *KeyStore) SignBaby(pk *babyjub.PublicKeyComp, prefix keystore.PrefixType, msg []byte) (*babyjub.SignatureComp, int64, error) {
-	return ks.Sign(pk, prefix, msg)
+func (ks *KeyStore) SignBabyRaw(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error) {
+	return ks.SignRaw(pk, msg)
 }
 
 type ExportParams struct {
@@ -156,6 +167,20 @@ type ClaimsReq struct {
 	Claims []*merkletree.Entry `json:"claims" binding:"required"`
 }
 
+// SetRoot0Req contains the data to set the SetRootClaim
+type SetRoot0Req struct {
+	OldRoot   *merkletree.Hash        `json:"oldRoot" binding:"required"`
+	NewRoot   *merkletree.Hash        `json:"newRoot" binding:"required"`
+	ProofKOp  *core.ProofClaimGenesis `json:"proofKOp" binding:"required,dive"`
+	Date      int64                   `json:"date" binding:"required"`
+	Signature *babyjub.SignatureComp  `json:"signature" binding:"required"` // signature of the Root
+}
+
+type CurrentRoot struct {
+	Local     *merkletree.Hash `json:"local"`
+	Published *merkletree.Hash `json:"published"`
+}
+
 func (i *HttpIdentity) AddClaims(claims []*merkletree.Entry) error {
 	// 1. send claims to IdentityAgent
 	claimsReq := ClaimsReq{Claims: claims}
@@ -165,7 +190,7 @@ func (i *HttpIdentity) AddClaims(claims []*merkletree.Entry) error {
 	}
 
 	// 2. getCurrentRoot from IdentityAgent
-	currentRoot := identityagentsrv.CurrentRoot{}
+	currentRoot := CurrentRoot{}
 	err = i.provider.request(i.client().Path("root").Get(""), &currentRoot)
 	if err != nil {
 		return err
@@ -173,13 +198,13 @@ func (i *HttpIdentity) AddClaims(claims []*merkletree.Entry) error {
 
 	// 3. sign UpdateRootMsg (containing Local (new) & Published (old) roots)
 	msg := append(currentRoot.Published[:], currentRoot.Local[:]...) // concatenate old + new root
-	sig, date, err := i.keyStore.SignBaby(i.kOp, keystore.PrefixMinorUpdate, msg)
+	sig, date, err := SignBaby(i.keyStore, i.kOp, keystore.PrefixMinorUpdate, msg)
 	if err != nil {
 		return err
 	}
 
 	// 4. send UpdateRootMsg signed to the IdentityAgent
-	setRootReq := claimsrv.SetRoot0Req{
+	setRootReq := SetRoot0Req{
 		OldRoot:   currentRoot.Published,
 		NewRoot:   currentRoot.Local,
 		ProofKOp:  i.proofKOp,
