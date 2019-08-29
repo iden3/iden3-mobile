@@ -2,12 +2,71 @@ package gomobile
 
 import (
 	"encoding/json"
-	// "fmt"
+	"fmt"
 
 	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/merkletree"
+	"github.com/iden3/go-iden3-crypto/babyjub"
 	"github.com/iden3/go-iden3-light-wallet/identityprovider"
 )
+
+type ExportParams identityprovider.ExportParams
+type ImportParams identityprovider.ImportParams
+type HttpProviderParams identityprovider.HttpProviderParams
+
+// Interface that is gomobile-friendly
+type KeyStorerGoMobile interface {
+	SignBaby(pk []byte, msg []byte) ([]byte, error)
+}
+
+// Implementation of the indentityprovider.KeyStore that wraps a struct that implements KeyStorerGoMobile
+type KeyStoreFromGoMobile struct {
+	keyStore KeyStorerGoMobile
+}
+
+func NewKeyStoreFromGoMobile(keyStore KeyStorerGoMobile) *KeyStoreFromGoMobile {
+	return &KeyStoreFromGoMobile{
+		keyStore: keyStore,
+	}
+}
+
+// func (ks *KeyStoreGoMobile) SignBaby(_pk []byte, msg []byte) ([]byte, error) {
+// 	__pk := PublicKey(_pk)
+// 	pk, err := __pk.toCore()
+// 	sig, err := ks.keyStore.SignBaby(pk)
+// 	return sig[:], err
+// }
+func (ks *KeyStoreFromGoMobile) SignBaby(pk *babyjub.PublicKeyComp, msg []byte) (*babyjub.SignatureComp, error) {
+	_sig, err := ks.keyStore.SignBaby(pk[:], msg)
+	if err != nil {
+		return nil, err
+	}
+	if len(_sig) != 32 {
+		return nil, fmt.Errorf("Compressed Signature must be 32 bytes")
+	}
+	sig := babyjub.SignatureComp{}
+	copy(sig[:], _sig)
+	return &sig, nil
+}
+
+// type KeyStore struct {
+// 	keyStore identityprovider.KeyStorer
+// }
+//
+// func NewKeyStore() {
+//
+// }
+
+type PublicKey []byte
+
+func (pk *PublicKey) toCore() (*babyjub.PublicKey, error) {
+	pkc := babyjub.PublicKeyComp{}
+	if len((*pk)[:]) != 32 {
+		return nil, fmt.Errorf("Compressed Public Key must be 32 bytes")
+	}
+	copy(pkc[:], (*pk)[:])
+	return pkc.Decompress()
+}
 
 type ID []byte
 
@@ -79,23 +138,42 @@ func (ba *BytesArray) toEntries() ([]*merkletree.Entry, error) {
 }
 
 type HttpProvider struct {
-	provider identityprovider.HttpProvider
+	provider *identityprovider.HttpProvider
+}
+
+func NewHttpProvider(params *HttpProviderParams) *HttpProvider {
+	return &HttpProvider{
+		provider: identityprovider.NewHttpProvider(identityprovider.HttpProviderParams(*params)),
+	}
+}
+
+func (p *HttpProvider) CreateIdentity(_keyStore KeyStorerGoMobile, _kOp []byte,
+	_extraGenesisClaims *BytesArray) ([]byte, error) {
+	extraGenesisClaims, err := _extraGenesisClaims.toEntries()
+	if err != nil {
+		return nil, err
+	}
+	__kOp := PublicKey(_kOp)
+	kOp, err := __kOp.toCore()
+	keyStore := NewKeyStoreFromGoMobile(_keyStore)
+	id, err := p.provider.CreateIdentity(keyStore, kOp, extraGenesisClaims)
+	if err != nil {
+		return nil, err
+	}
+	_id := IDFromCore(id)
+	return _id, nil
 }
 
 type Identity struct {
 	iden identityprovider.Identity
 }
 
-func (i *Identity) Export(exportFilePath string, passphrase string) error {
-	return i.iden.Export(exportFilePath, identityprovider.ExportParams{
-		Passphrase: passphrase,
-	})
+func (i *Identity) Export(exportFilePath string, exportParams *ExportParams) error {
+	return i.iden.Export(exportFilePath, identityprovider.ExportParams(*exportParams))
 }
 
-func (i *Identity) Import(importFilePath string, passphrase string) error {
-	return i.iden.Import(importFilePath, identityprovider.ImportParams{
-		Passphrase: passphrase,
-	})
+func (i *Identity) Import(importFilePath string, importParams *ImportParams) error {
+	return i.iden.Import(importFilePath, identityprovider.ImportParams(*importParams))
 }
 
 func (i *Identity) ID() []byte {
