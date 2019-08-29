@@ -27,10 +27,26 @@ err := kOpComp.UnmarshalText([]byte(kOpStr))
 assert.Nil(t, err)
 kOpPub, err := kOpComp.Decompress()
 
+// create new keystore
+ks := NewKeyStore()
+
+// import key to keystore
+err = ks.ImportKeyBabyJub(kOpPub)
+
 // create new identity
-identity, err := provider.NewIdentity(kOpPub, nil)
-assert.Nil(t, err)
-assert.Equal(t, "119h9u2nXbtg5TmPsMm8W5bDkmVZhdS6TgKMvNWPU3", identity.ID.String())
+id, proofKOp, err = provider.CreateIdentity(keyStore, kOp, nil)
+
+// load identity
+identity, err = provider.LoadIdentity(id, kOp, proofKOp, keyStore)
+
+// add claims
+err := identity.AddClaims([]*merkletree.Entry{c0, c1})
+
+// get emitted claims
+claims, err := identity.EmittedClaims()
+
+// get received claims
+claims, err := identity.ReceivedClaims()
 
 // [WIP]
 ```
