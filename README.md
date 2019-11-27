@@ -1,9 +1,9 @@
-# go-iden3-light-wallet
-**iden3 light wallet client** library implementation in Go for desktop & smartphone wallets (using GoMobile).
+# go-iden3-client
+**go iden3 client** is a library implementation for an iden3 identity client in go that also offers gomobile-friendly wrappers.
 
 
 ## Test
-- this library connects with the [IdenityServer](https://github.com/iden3/go-iden3-servers), so will need a running IdentityServer
+- this library connects with the [IdenityServer](https://github.com/iden3/go-iden3-servers), so it will need a running IdentityServer.
 
 ```
 go test ./...
