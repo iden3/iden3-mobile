@@ -1,0 +1,1 @@
+cd ../go/mobile && gomobile bind --target android -o ./iden3-mobile.aar && cp iden3-mobile.aar ../../android/app/libs/
