@@ -101,6 +101,8 @@ func (i *Identity) RequestVerification(url string, claimIndex []byte) string {
 	return id
 }
 
+
+
 func (t *verifyTicket) isDone() bool {
 	body, err := httpGet(t.endpoint)
 	if err != nil {

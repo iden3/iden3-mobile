@@ -23,8 +23,8 @@ type (
 	}
 )
 
-const timeToBuildClaim time.Duration = 20 * time.Second
-const timeToVerify time.Duration = 20 * time.Second
+const timeToBuildClaim time.Duration = 240 * time.Second
+const timeToVerify time.Duration = 240 * time.Second
 
 func main() {
 	ip := "192.168.68.120"

@@ -22,7 +22,7 @@ var callback Callback
 var pendingTickets []ticketInterface
 var isPendingTicketsBeingChecked bool = false
 
-const checkPendingTicketsPeriod time.Duration = 10 * time.Second
+const checkPendingTicketsPeriod time.Duration = 60 * time.Second
 
 var mutex = &sync.Mutex{}
 

@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Main text instance
         final TextView mainText = findViewById(R.id.mainText);
-        callback = new CallbackHandler(mainText);
+        callback = new CallbackHandler(this, mainText);
 
         // Init iden3
         iden3 = new Identity();
