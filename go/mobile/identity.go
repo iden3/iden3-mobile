@@ -1,7 +1,8 @@
 package iden3mobile
 
 import (
-	"errors"
+	"encoding/json"
+	"io/ioutil"
 
 	"github.com/google/uuid"
 )
@@ -21,12 +22,21 @@ func (i *Identity) CreateIdentity() error {
 
 //
 func (i *Identity) Export(filePath string) error {
-	// TODO: implement
-	return errors.New("NOT IMPLEMENTED")
+	j, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+	if err := ioutil.WriteFile(filePath, j, 0644); err != nil {
+		return err
+	}
+	return nil
 }
 
 //
 func (i *Identity) Import(filePath string) error {
-	// TODO: implement
-	return errors.New("NOT IMPLEMENTED")
+	j, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(j, i)
 }

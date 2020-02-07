@@ -23,11 +23,11 @@ type (
 	}
 )
 
-const timeToBuildClaim time.Duration = 240 * time.Second
-const timeToVerify time.Duration = 240 * time.Second
+const timeToBuildClaim time.Duration = 960 * time.Second
+const timeToVerify time.Duration = 960 * time.Second
 
 func main() {
-	ip := "192.168.68.120"
+	ip := "192.168.68.126"
 	pendingClaims := make(map[string]time.Time)
 	pendingVerifications := make(map[string]time.Time)
 	http.HandleFunc("/issueClaim", func(w http.ResponseWriter, r *http.Request) {
