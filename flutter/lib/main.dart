@@ -47,7 +47,7 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       var arguments = Map();
       arguments["url"] = "http://"+serverIP+":1234/issueClaim";
-      ticket = await platform.invokeMethod("issueClaim", arguments);
+      ticket = await platform.invokeMethod("requestClaim", arguments);
     } on PlatformException catch (e) {
       print("PlatformException: ${e.message}");
     }

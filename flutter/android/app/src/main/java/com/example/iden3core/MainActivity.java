@@ -42,10 +42,10 @@ public class MainActivity extends FlutterActivity {
             result.error("newID", e.getMessage(), null);
         }
       }
-      // ASYNC TEST
-      if (call.method.equals("issueClaim")) {
+      // ISSUE CLAIM
+      if (call.method.equals("requestClaim")) {
         if (!call.hasArgument("url")) {
-            result.error("issueClaim", "Send argument as Map<\"data\", string>", null);
+            result.error("requestClaim", "Send argument as Map<\"data\", string>", null);
             return;
         }
         try {
@@ -54,7 +54,7 @@ public class MainActivity extends FlutterActivity {
             result.success(ticket);
             return;
         } catch (Exception e) {
-            result.error("issueClaim", e.getMessage(), null);
+            result.error("requestClaim", e.getMessage(), null);
         }
         return;
       }

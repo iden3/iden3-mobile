@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net/http"
 
@@ -21,18 +22,26 @@ type (
 		Success bool
 		Claim   string
 	}
+
+	conf struct {
+		IP               string
+		TimeToBuildClaim time.Duration
+		TimeToVerify     time.Duration
+	}
 )
 
-const timeToBuildClaim time.Duration = 960 * time.Second
-const timeToVerify time.Duration = 960 * time.Second
+var c = conf{}
 
 func main() {
-	ip := "192.168.68.126"
+	parseFlags()
+	if c.IP == "error" {
+		panic("IP flag is mandatory")
+	}
 	pendingClaims := make(map[string]time.Time)
 	pendingVerifications := make(map[string]time.Time)
 	http.HandleFunc("/issueClaim", func(w http.ResponseWriter, r *http.Request) {
 		tracker := uuid.New().String()
-		if _, err := w.Write([]byte("http://" + ip + ":1234/getClaim?tracker=" + tracker)); err != nil {
+		if _, err := w.Write([]byte("http://" + c.IP + ":1234/getClaim?tracker=" + tracker)); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println("/issueClaim: ERROR SENDING TRACKER")
 		} else {
@@ -43,7 +52,7 @@ func main() {
 
 	http.HandleFunc("/getClaim", func(w http.ResponseWriter, r *http.Request) {
 		tracker := r.URL.Query().Get("tracker")
-		if value, ok := pendingClaims[tracker]; ok && time.Since(value) > timeToBuildClaim {
+		if value, ok := pendingClaims[tracker]; ok && time.Since(value) > c.TimeToBuildClaim {
 			j, err := json.Marshal(issuerResponse{
 				Done:    true,
 				Success: true,
@@ -80,7 +89,7 @@ func main() {
 
 	http.HandleFunc("/verifyClaim", func(w http.ResponseWriter, r *http.Request) {
 		tracker := uuid.New().String()
-		if _, err := w.Write([]byte("http://" + ip + ":1234/getVerification?tracker=" + tracker)); err != nil {
+		if _, err := w.Write([]byte("http://" + c.IP + ":1234/getVerification?tracker=" + tracker)); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println("/verifyClaim: ERROR SENDING TRACKER")
 		} else {
@@ -91,7 +100,7 @@ func main() {
 
 	http.HandleFunc("/getVerification", func(w http.ResponseWriter, r *http.Request) {
 		tracker := r.URL.Query().Get("tracker")
-		if value, ok := pendingVerifications[tracker]; ok && time.Since(value) > timeToVerify {
+		if value, ok := pendingVerifications[tracker]; ok && time.Since(value) > c.TimeToVerify {
 			j, err := json.Marshal(verifierResponse{
 				Done:    true,
 				Success: true,
@@ -124,8 +133,20 @@ func main() {
 		}
 	})
 
-	fmt.Println("server running at", ip+":1234")
+	fmt.Println("server running at", c.IP+":1234")
 	if err := http.ListenAndServe(":1234", nil); err != nil {
 		panic(err)
 	}
+}
+
+func parseFlags() {
+	var ttbc int
+	var ttv int
+	flag.IntVar(&ttbc, "issuetime", 60, "Time that takes to build a claim (in seconds)")
+	flag.IntVar(&ttv, "verifytime", 60, "Time that takes to verify a claim (in seconds)")
+	flag.StringVar(&c.IP, "ip", "error", "IP of the machine where this software will run")
+
+	flag.Parse()
+	c.TimeToBuildClaim = time.Duration(ttbc) * time.Second
+	c.TimeToVerify = time.Duration(ttv) * time.Second
 }

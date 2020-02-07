@@ -2,8 +2,8 @@ package iden3mobile
 
 import (
 	"fmt"
-	"time"
 	"sync"
+	"time"
 )
 
 type (
@@ -22,7 +22,7 @@ var callback Callback
 var pendingTickets []ticketInterface
 var isPendingTicketsBeingChecked bool = false
 
-const checkPendingTicketsPeriod time.Duration = 60 * time.Second
+const checkPendingTicketsPeriod time.Duration = 240 * time.Second
 
 var mutex = &sync.Mutex{}
 
