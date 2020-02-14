@@ -3,7 +3,10 @@ module github.com/arnaubennassar/go-playground/mobile
 go 1.13
 
 require (
+	github.com/go-playground/validator/v10 v10.2.0
 	github.com/google/uuid v1.1.1
+	github.com/iden3/go-iden3-core v0.0.7-0.20200210213229-6e50d57f79db
+	github.com/iden3/go-iden3-crypto v0.0.3-0.20190831180703-c95c95b7b161
 	github.com/ipfs/go-ipfs-util v0.0.1 // indirect
 	github.com/ipfs/go-log v1.0.1 // indirect
 	github.com/libp2p/go-conn-security v0.1.0 // indirect

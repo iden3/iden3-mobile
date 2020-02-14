@@ -7,29 +7,26 @@ import iden3mobile.Callback;
 // CHANNEL (flutter <== android <== go)
 public class CallbackHandler implements Callback {
     private MainActivity activity;
-    MethodChannel channel;
+    private MethodChannel.Result result;
 
-    public CallbackHandler(MainActivity _activity, MethodChannel _channel) {
+    public CallbackHandler(MainActivity _activity, MethodChannel.Result _result) {
       activity = _activity;
-      channel = _channel;
+      result = _result;
     }
     
     @Override
-    public void onIssuerResponse(String ticket, String id, String claim, java.lang.Exception error) {
-        Log.println(Log.ERROR, "CB:onIssuerResponse", "ticket: "+ticket+"\nid: "+id+"\nclaim: "+claim+"\nerror: "+error);
-        callFlutter("onIssuerResponse", "\nReceived response for the ticket: "+ticket+". Claim: "+claim);
+    public void verifierResponse(boolean p0, java.lang.Exception p1) {
+      callFlutter(p0, p1);
     }
 
-
-    @Override
-    public void onVerifierResponse(String ticket, String id, boolean aproved, java.lang.Exception error) {
-        Log.println(Log.ERROR, "CB:onIssuerResponse", "ticket: "+ticket+"\nid: "+id+"\naproved: "+aproved+"\nerror: "+error);
-    }
-
-    private void callFlutter(final String function, final String arguments){
+    private void callFlutter(final boolean p0, final java.lang.Exception p1){
       activity.runOnUiThread (new Runnable() {
           public void run() {
-            channel.invokeMethod(function, arguments);
+            if (p1 == null) {
+              result.success(p0);
+            } else {
+              result.error("proveClaim", "Error proofing claim to issuer: " + p1.getMessage(), null);
+            }
           }
       });
     }

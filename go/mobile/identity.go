@@ -1,42 +1,57 @@
 package iden3mobile
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"errors"
 
-	"github.com/google/uuid"
+	"github.com/iden3/go-iden3-core/core/proof"
+	"github.com/iden3/go-iden3-core/db"
+	"github.com/iden3/go-iden3-core/identity"
+	"github.com/iden3/go-iden3-core/identity/issuer"
+	"github.com/iden3/go-iden3-core/keystore"
 )
 
-type (
-	Identity struct {
-		Id             string
-		ReceivedClaims []string
-	}
-)
-
-// CreateIdentity creates a new identity
-func (i *Identity) CreateIdentity() error {
-	i.Id = uuid.New().String()
-	return nil
+type Identity struct {
+	id                  identity.Issuer
+	receivedCredentials []proof.CredentialExistence
+	Tickets             *TicketsMap
+	eventSender         Event
 }
 
-//
-func (i *Identity) Export(filePath string) error {
-	j, err := json.Marshal(i)
+// NewIdentity creates a new identity
+// this funciton is mapped as a constructor in Java
+func NewIdentity(storePath, pass string, extraGenesisClaims *BytesArray, e Event) (*Identity, error) {
+	// TODO: make db & ksStorage persistent (using param: storePath string)
+	id := &Identity{}
+	_extraGenesisClaims, err := extraGenesisClaims.toEntriers()
 	if err != nil {
-		return err
+		return id, err
 	}
-	if err := ioutil.WriteFile(filePath, j, 0644); err != nil {
-		return err
+	storage := db.NewMemoryStorage()
+	cfg := issuer.ConfigDefault
+	ksStorage := keystore.MemStorage([]byte{})
+	keyStore, err := keystore.NewKeyStore(&ksStorage, keystore.LightKeyStoreParams)
+	if err != nil {
+		return id, err
 	}
-	return nil
+	kOp, err := keyStore.NewKey([]byte(pass))
+	if err != nil {
+		return id, err
+	}
+	is, err := issuer.New(cfg, kOp, _extraGenesisClaims, storage, keyStore, nil)
+	if err != nil {
+		return id, err
+	}
+	id.id = is
+	id.Tickets = &TicketsMap{
+		m: make(map[string]*Ticket),
+	}
+	go id.checkPendingTickets()
+	id.eventSender = e
+	return id, nil
 }
 
-//
-func (i *Identity) Import(filePath string) error {
-	j, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(j, i)
+// NewIdentityLoad loads an already created identity
+// this funciton is mapped as a constructor in Java
+func NewIdentityLoad(storePath string, e Event) (*Identity, error) {
+	return &Identity{}, errors.New("NOT IMPLEMENTED")
 }

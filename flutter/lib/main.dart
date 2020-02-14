@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'iden3.dart' as iden3;
 
 void main() => runApp(MyApp());
 
@@ -32,30 +33,68 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   // set callback handler
   String _message = "press button";
+  String _endpoint = "http://192.168.200.181:1234";
   int _counter = 0;
-  static const platform = const MethodChannel('iden3.com/callinggo');
-  static const serverIP = "192.168.68.126";
 
   void initState() {
     super.initState();
     // CHANNEL (flutter <== android)
-    platform.setMethodCallHandler(goAsyncHandler);
+    iden3.newIdentity("mySecurePassword:)", "myID", _eventHandler).then(
+      (onValue) => print("Identity created")
+    ).catchError((e) => print(e));
   }
-  // ASYNC TEST
-  Future<void> _iden3Action() async {
-    String ticket;
-    try {
-      var arguments = Map();
-      arguments["url"] = "http://"+serverIP+":1234/issueClaim";
-      ticket = await platform.invokeMethod("requestClaim", arguments);
-    } on PlatformException catch (e) {
-      print("PlatformException: ${e.message}");
-    }
 
-    if (ticket != null) {
-      setState(() {
-        _message = "waiting issuer: " + ticket;
-      });
+  // EVENT HANDLER
+  Future<void> _eventHandler(MethodCall methodCall) async {
+    switch (methodCall.method) {
+      case 'onIssuerResponse':
+        print("EVENT onIssuerResponse");
+        if(methodCall.arguments == "new claim"){
+          iden3.listClaims().then((claims) {
+            if (claims.length == 0) {
+              print("CLAIM NOT LISTED, DEMO HAS FAILED");
+            }
+            iden3.proveClaim(_endpoint + "/verifyClaim", 0).then((success) {
+              if(success){
+                print("DEMO COMPLETED :)");
+              }
+              else {
+                print("CLAIM NOT VERIFIED, DEMO HAS FAILED");
+              }
+            }).catchError((e) => print(e));
+          }).catchError((e) {
+            print("ERROR LISTING CLAIMS");
+            print(e);
+          });
+        } else {
+          print("ERROR REQUESTING CLAIM: " + methodCall.arguments);
+        }
+        return; 
+      default:
+        print("UNIMPLEMENTED");
+    }
+  }
+
+  Future<void> _doDemo() async {
+    Map ticket = await iden3.requestClaim(_endpoint + "/issueClaim").catchError((e) => print(e));
+    print("CLAIM REQUEST TICKET: ");
+    _printTicket(ticket);
+  }
+
+  void _printTicket(Map ticket){
+    ticket.forEach((k, v) => print('--- ${k}: ${v}'));
+  }
+
+  Future<void> _listTickets() async {
+    var tickets =  await iden3.listTickets().catchError((e) => print(e));
+    if (tickets.length == 0){
+      print("NO PENDING TICKETS");
+      return;
+    }
+    print("PENDING TICKETS:");
+    for (var t in tickets) {
+      _printTicket(t);
+      print("--------------");
     }
   }
 
@@ -63,21 +102,6 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
         ++_counter;
     });
-  }
-
-  Future<void> goAsyncHandler(MethodCall methodCall) async {
-    print("someone just called goAsyncHandler");
-    print(methodCall);
-    print("_________________________________________________________");
-    switch (methodCall.method) {
-      case 'onIssuerResponse':
-        setState(() {
-          _message = methodCall.arguments;
-        });
-        return;
-      default:
-        print("UNIMPLEMENTED");
-    }
   }
 
   @override
@@ -115,9 +139,17 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             Align(
+              alignment: Alignment.bottomCenter,
+              child: FloatingActionButton(
+                onPressed: _listTickets,
+                tooltip: 'Tickets',
+                child: Icon(Icons.album),
+              ),
+            ),
+            Align(
               alignment: Alignment.bottomRight,
               child: FloatingActionButton(
-                onPressed: _iden3Action,
+                onPressed: _doDemo,
                 tooltip: 'Wait',
                 child: Icon(Icons.alarm),
               ),

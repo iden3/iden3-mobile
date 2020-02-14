@@ -2,6 +2,7 @@ vendor/
 .vscode
 ####### gomobile
 go/mobile/iden3-mobile-sources.jar
+#go/mobile/iden3mobile
 # uncompressed jar
 go/mobile/go
 go/mobile/META-INF
@@ -9,7 +10,6 @@ go/mobile/mobile
 
 ####### FLUTTER GITIGNORE TEMPLATE:
 ####### https://github.com/flutter/flutter/blob/master/.gitignore
-
 # Miscellaneous
 *.class
 *.lock
@@ -113,6 +113,7 @@ unlinked_spec.ds
 # Built application files
 *.apk
 *.aar
+!flutter/android/app/src/main/libs/iden3-mobile.aar
 *.ap_
 *.aab
 

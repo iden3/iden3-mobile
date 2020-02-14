@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,6 +10,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/iden3/go-iden3-core/core"
+	"github.com/iden3/go-iden3-core/core/claims"
+	"github.com/iden3/go-iden3-core/core/proof"
+	"github.com/iden3/go-iden3-core/db"
+	"github.com/iden3/go-iden3-core/identity/issuer"
+	"github.com/iden3/go-iden3-core/keystore"
+	"github.com/iden3/go-iden3-core/merkletree"
 )
 
 type (
@@ -18,9 +26,9 @@ type (
 	}
 
 	issuerResponse struct {
-		Done    bool
-		Success bool
-		Claim   string
+		Done       bool
+		Success    bool
+		Credential *proof.CredentialExistence
 	}
 
 	conf struct {
@@ -33,12 +41,13 @@ type (
 var c = conf{}
 
 func main() {
+	// init
 	parseFlags()
 	if c.IP == "error" {
 		panic("IP flag is mandatory")
 	}
+	is := initIssuer()
 	pendingClaims := make(map[string]time.Time)
-	pendingVerifications := make(map[string]time.Time)
 	http.HandleFunc("/issueClaim", func(w http.ResponseWriter, r *http.Request) {
 		tracker := uuid.New().String()
 		if _, err := w.Write([]byte("http://" + c.IP + ":1234/getClaim?tracker=" + tracker)); err != nil {
@@ -52,11 +61,12 @@ func main() {
 
 	http.HandleFunc("/getClaim", func(w http.ResponseWriter, r *http.Request) {
 		tracker := r.URL.Query().Get("tracker")
+		cred := genRandomCredential(is)
 		if value, ok := pendingClaims[tracker]; ok && time.Since(value) > c.TimeToBuildClaim {
 			j, err := json.Marshal(issuerResponse{
-				Done:    true,
-				Success: true,
-				Claim:   uuid.New().String(),
+				Done:       true,
+				Success:    true,
+				Credential: cred,
 			})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -73,7 +83,6 @@ func main() {
 			j, err := json.Marshal(issuerResponse{
 				Done:    false,
 				Success: false,
-				Claim:   "",
 			})
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -88,54 +97,77 @@ func main() {
 	})
 
 	http.HandleFunc("/verifyClaim", func(w http.ResponseWriter, r *http.Request) {
-		tracker := uuid.New().String()
-		if _, err := w.Write([]byte("http://" + c.IP + ":1234/getVerification?tracker=" + tracker)); err != nil {
+		j, err := json.Marshal(verifierResponse{
+			Done:    true,
+			Success: true,
+		})
+		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Println("/verifyClaim: ERROR SENDING TRACKER")
-		} else {
-			fmt.Println("/verifyClaim: received verification request:", tracker)
-			pendingVerifications[tracker] = time.Now()
+			fmt.Println("/verifyClaim: ERROR BUILDING VERIFICATION RESPONSE")
 		}
-	})
-
-	http.HandleFunc("/getVerification", func(w http.ResponseWriter, r *http.Request) {
-		tracker := r.URL.Query().Get("tracker")
-		if value, ok := pendingVerifications[tracker]; ok && time.Since(value) > c.TimeToVerify {
-			j, err := json.Marshal(verifierResponse{
-				Done:    true,
-				Success: true,
-			})
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Println("/getVerification: ERROR BUILDING VERIFICATION RESPONSE")
-			}
-			if _, err := w.Write(j); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Println("/getVerification: ERROR SENDING VERIFICATION")
-			} else {
-				fmt.Println("/getVerification: claim verified:", tracker)
-				pendingVerifications[tracker] = time.Now()
-			}
+		if _, err := w.Write(j); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Println("/verifyClaim: ERROR SENDING VERIFICATION")
 		} else {
-			j, err := json.Marshal(verifierResponse{
-				Done:    false,
-				Success: false,
-			})
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Println("/getVerification: ERROR BUILDING VERIFICATION RESPONSE")
-			}
-			if _, err := w.Write(j); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				fmt.Println("/getVerification: ERROR SENDING VERIFICATION")
-			}
-			fmt.Println("/getVerification: NOT VERIFIED YET!")
+			fmt.Println("/verifyClaim: claim verified:")
 		}
 	})
 
 	fmt.Println("server running at", c.IP+":1234")
 	if err := http.ListenAndServe(":1234", nil); err != nil {
 		panic(err)
+	}
+}
+
+func initIssuer() *issuer.Issuer {
+	cfg := issuer.ConfigDefault
+	storage := db.NewMemoryStorage()
+	ksStorage := keystore.MemStorage([]byte{})
+	keyStore, err := keystore.NewKeyStore(&ksStorage, keystore.LightKeyStoreParams)
+	if err != nil {
+		panic(err)
+	}
+	kOp, err := keyStore.NewKey([]byte("pass"))
+	if err != nil {
+		panic(err)
+	}
+	err = keyStore.UnlockKey(kOp, []byte("pass"))
+	if err != nil {
+		panic(err)
+	}
+	is, err := issuer.New(cfg, kOp, []merkletree.Entrier{}, storage, keyStore, nil)
+	if err != nil {
+		panic(err)
+	}
+	return is
+}
+
+func genRandomCredential(is *issuer.Issuer) *proof.CredentialExistence {
+	var indexSlot [claims.IndexSlotBytes]byte
+	var dataSlot [claims.DataSlotBytes]byte
+	indexSlotHex, err := hex.DecodeString("292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2a292a2a2a2a2a2a2a2a2b")
+	if err != nil {
+		panic(err)
+	}
+	dataSlotHex, err := hex.DecodeString("564040404040404040405640404040404040404056404040404040404040564040404040404040405640404040404040404056404040404040404040564040404040404040405640404040404040404056404040404040404040564040404040404040405640404040404040404056404040404040404059")
+	if err != nil {
+		panic(err)
+	}
+	copy(indexSlot[:], indexSlotHex[:claims.IndexSlotBytes])
+	copy(dataSlot[:], dataSlotHex[:claims.DataSlotBytes])
+	claim := claims.NewClaimBasic(indexSlot, dataSlot, 5678)
+	id, err := core.IDFromString("11AVZrKNJVqDJoyKrdyaAgEynyBEjksV5z2NjZoPxf")
+	if err != nil {
+		panic(err)
+	}
+	return &proof.CredentialExistence{
+		Id:            &id,
+		IdenStateData: proof.IdenStateData{},
+		MtpClaim:      &merkletree.Proof{},
+		Claim:         claim.Entry(),
+		RevRoot:       &merkletree.Hash{},
+		RooRoot:       &merkletree.Hash{},
+		IdPub:         "http://TODO",
 	}
 }
 
