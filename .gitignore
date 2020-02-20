@@ -1,6 +1,7 @@
 vendor/
 .vscode
 ####### gomobile
+go/mobile/config.yml
 go/mobile/iden3-mobile-sources.jar
 #go/mobile/iden3mobile
 # uncompressed jar

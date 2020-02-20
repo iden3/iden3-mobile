@@ -2,6 +2,7 @@ package iden3mobile
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/iden3/go-iden3-core/merkletree"
 )
@@ -52,7 +53,9 @@ func (e *byteEntrier) Entry() *merkletree.Entry {
 }
 
 type TicketsMap struct {
-	m map[string]*Ticket
+	sync.RWMutex
+	m          map[string]*Ticket
+	shouldStop bool
 }
 
 type TicketsMapInterface interface {
@@ -66,13 +69,23 @@ func (tm *TicketsMap) Get(key string) (*Ticket, error) {
 	return &Ticket{}, errors.New("No ticket found kor the given key.")
 }
 
+func (tm *TicketsMap) Cancel(key string) error {
+	if _, ok := tm.m[key]; ok {
+		tm.Lock()
+		delete(tm.m, key)
+		tm.Unlock()
+		return nil
+	}
+	return errors.New("No ticket found kor the given key.")
+}
+
 func (tm *TicketsMap) ForEach(handler TicketsMapInterface) error {
+	tm.RLock()
+	defer tm.RUnlock()
 	for _, t := range tm.m {
-		mutex.Lock()
 		if err := handler.F(t); err != nil {
 			return err
 		}
-		mutex.Unlock()
 	}
 	return nil
 }

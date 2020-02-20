@@ -16,8 +16,7 @@ import (
 
 type (
 	claimRequestHandler struct {
-		holder   *Identity
-		endpoint string
+		Endpoint string
 	}
 
 	verifierResponse struct {
@@ -40,17 +39,16 @@ func (i *Identity) RequestClaim(endpoint, data string) *Ticket {
 	id := uuid.New().String()
 	t := &Ticket{
 		Id:   id,
-		Type: "claimRequestHandler",
+		Type: "RequestClaim",
 	}
 	go func() {
 		futureEndpoint, err := getTicketEndpoint(endpoint + "?data=" + data)
 		if err != nil {
-			i.eventSender.OnIssuerResponse(id, i.id.ID().String(), []byte{}, err)
+			i.eventSender.OnEvent(t.Type, t.Id, "{}", err)
 			return
 		}
 		t.handler = &claimRequestHandler{
-			holder:   i,
-			endpoint: futureEndpoint,
+			Endpoint: futureEndpoint,
 		}
 		i.addTicket(t)
 	}()
@@ -59,40 +57,49 @@ func (i *Identity) RequestClaim(endpoint, data string) *Ticket {
 }
 
 //
-func (h *claimRequestHandler) isDone(id string) bool {
-	body, err := httpGet(h.endpoint)
+func (h *claimRequestHandler) isDone(id *Identity) (bool, string, error) {
+	body, err := httpGet(h.Endpoint)
 	if err != nil {
-		h.holder.eventSender.OnIssuerResponse(id, h.holder.id.ID().String(), []byte{}, err)
-		return true
+		return true, "{}", err
 	}
 
 	var veredict issuerResponse
 	err = json.Unmarshal(body, &veredict)
 	if err != nil {
-		h.holder.eventSender.OnIssuerResponse(id, h.holder.id.ID().String(), []byte{}, err)
-		return true
+		return true, "{}", err
 	}
 
 	if veredict.Done {
 		if veredict.Success {
-			// VALIDATE RESPONSE
+			// Validate response
 			validate := validator.New()
 			err = validate.Struct(veredict)
 			if err != nil {
-				h.holder.eventSender.OnIssuerResponse(id, h.holder.id.ID().String(), []byte{}, errors.New("Invalid response from the issuer: "+err.Error()))
-				return true
+				// Invalid response
+				return true, "{}", errors.New("Invalid response from the issuer: " + err.Error())
 			}
-			// SEND EVENT WITH CREDENTIAL
-			h.holder.addCredentialExistance(veredict.Credential)
-			h.holder.eventSender.OnIssuerResponse(id, h.holder.id.ID().String(), veredict.Credential.Claim.Bytes(), nil)
+			// Add credential to identity
+			id.addCredentialExistance(veredict.Credential)
+			claim, err := veredict.Credential.Claim.MarshalText()
+			if err != nil {
+				return true, "{}", err
+			}
+			return true, "{claim:" + string(claim) + "}", nil
 		} else {
-			// ISSUER DECIDE TO NOT SEND THE CREDENTIAL
-			h.holder.eventSender.OnIssuerResponse(id, h.holder.id.ID().String(), []byte{}, errors.New("Issuer did not send the claim"))
+			// Issuer didn't accept request
+			return true, "{}", errors.New("Issuer did not send the claim")
 		}
-		return true
 	} else {
-		return false
+		return false, "", nil
 	}
+}
+
+func (h *claimRequestHandler) marshal() ([]byte, error) {
+	return json.Marshal(h)
+}
+
+func (h *claimRequestHandler) unmarshal(data []byte) error {
+	return json.Unmarshal(data, &h)
 }
 
 // ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier

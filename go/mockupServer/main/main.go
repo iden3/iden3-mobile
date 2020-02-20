@@ -135,7 +135,7 @@ func initIssuer() *issuer.Issuer {
 	if err != nil {
 		panic(err)
 	}
-	is, err := issuer.New(cfg, kOp, []merkletree.Entrier{}, storage, keyStore, nil)
+	is, err := issuer.New(cfg, kOp, []merkletree.Entrier{}, storage, keyStore, nil, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -161,13 +161,13 @@ func genRandomCredential(is *issuer.Issuer) *proof.CredentialExistence {
 		panic(err)
 	}
 	return &proof.CredentialExistence{
-		Id:            &id,
-		IdenStateData: proof.IdenStateData{},
-		MtpClaim:      &merkletree.Proof{},
-		Claim:         claim.Entry(),
-		RevRoot:       &merkletree.Hash{},
-		RooRoot:       &merkletree.Hash{},
-		IdPub:         "http://TODO",
+		Id:                  &id,
+		IdenStateData:       proof.IdenStateData{},
+		MtpClaim:            &merkletree.Proof{},
+		Claim:               claim.Entry(),
+		RevocationsTreeRoot: &merkletree.Hash{},
+		RootsTreeRoot:       &merkletree.Hash{},
+		IdenPubUrl:          "http://TODO",
 	}
 }
 
