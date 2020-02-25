@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/iden3/go-iden3-core/components/idenpuboffchain/readerhttp"
 	"github.com/iden3/go-iden3-core/components/idenpubonchain"
-	"github.com/iden3/go-iden3-core/core/proof"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/eth"
 	"github.com/iden3/go-iden3-core/identity/holder"
@@ -21,12 +20,14 @@ import (
 )
 
 type Identity struct {
-	id                  *holder.Holder
-	receivedCredentials []proof.CredentialExistence
-	Tickets             *TicketsMap
-	eventSender         Event
-	storage             db.Storage
+	id          *holder.Holder
+	Tickets     *TicketsMap
+	eventSender Event
+	storage     db.Storage
 }
+
+// TODO:
+// store on changes vs store on stop
 
 // NewIdentity creates a new identity
 // this funciton is mapped as a constructor in Java.
@@ -60,12 +61,14 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	if err := db.StoreJSON(tx, []byte("kOpComp"), kOpComp); err != nil {
 		return id, err
 	}
+	// Init claim DB
+	tx.Put([]byte("receivedCredentialsCounter"), []byte("0"))
 	if err := tx.Commit(); err != nil {
 		return id, err
 	}
 	// Parse extra genesis claims
-	// TODO: Update toEntriers => toEntriersMetadata
-	_extraGenesisClaims, err := extraGenesisClaims.toEntriers()
+	// TODO: Call toClaimers once it's implemented
+	// _extraGenesisClaims, err := extraGenesisClaims.toClaimers()
 	if err != nil {
 		return id, err
 	}
@@ -73,7 +76,7 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	_, err = holder.New(
 		holder.ConfigDefault,
 		kOpComp,
-		_extraGenesisClaims,
+		nil,
 		storage,
 		keyStore,
 		idenPubOnChain,
@@ -118,61 +121,22 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	id.Tickets = &TicketsMap{
 		m: make(map[string]*Ticket),
 	}
-	// Load pending tickets
-	tickets := make(map[string][]byte)
-	err = db.LoadJSON(storage, []byte("pendingTickets"), &tickets)
-	if err == nil {
-		log.Info("Loading ", len(tickets), " pending tickets")
-		for _, t := range tickets {
-			ticket, err := unmarshalTicket(t)
-			if err != nil {
-				log.Error("Error loading ticket: ", err)
-			} else {
-				id.Tickets.m[ticket.Id] = ticket
-			}
-		}
-	} else {
-		log.Error("Error loading pending tickets: ", err)
-	}
-	go id.checkPendingTickets(time.Duration(checkTicketsPeriodMilis * 1000000)) // TODO: set something more realistic or expose it to consumer
 	id.eventSender = e
 	id.storage = storage
+	id.loadTickets()
+	go id.checkPendingTickets(time.Duration(checkTicketsPeriodMilis * 1000000))
 	return id, nil
 }
 
+// TODO: update marshal functions (s *Struct) ==> (s Struct)
+
 // Stop close all the open resources of the Identity
 func (i *Identity) Stop() {
+	log.Info("Stopping identity: ", i.id.ID())
 	defer i.storage.Close()
 	// Send "singnal" to stop the pending tickets loop
 	i.Tickets.shouldStop = true
-	// If the pending tickets loop is running, wait
-	i.Tickets.RLock()
-	defer i.Tickets.RUnlock()
-	// Marshal tickets
-	marshaledTickets := make(map[string][]byte)
-	log.Info("Storing ", len(i.Tickets.m), " pending tickets")
-	for _, t := range i.Tickets.m {
-		// Marshal ticket
-		data, err := t.marshal()
-		if err != nil {
-			log.Error("Error storing ticket", t.Id, err)
-		} else {
-			marshaledTickets[t.Id] = data
-		}
-	}
-	// Store pending tickets
-	tx, err := i.storage.NewTx()
-	if err != nil {
-		log.Error("Error storing ALL tickets", err)
-		return
-	}
-	if err := db.StoreJSON(tx, []byte("pendingTickets"), marshaledTickets); err != nil {
-		log.Error("Error storing ALL tickets", err)
-		return
-	}
-	if err := tx.Commit(); err != nil {
-		log.Error("Error storing ALL tickets", err)
-	}
+	i.storeTickets()
 }
 
 func loadComponents(storePath, web3Url string) (idenpubonchain.IdenPubOnChainer, *babykeystore.KeyStore, db.Storage, error) {

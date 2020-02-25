@@ -1,9 +1,6 @@
 package iden3mobile
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -14,37 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testTicketHandler struct {
-	SayImDone bool
-	Err       string
-}
+type asyncTestEventHandler struct{}
 
-func (h *testTicketHandler) isDone(id *Identity) (bool, string, error) {
-	if h.SayImDone {
-		data, err := h.marshal()
-		if err != nil {
-			return true, "{}", err
-		}
-		if h.Err != "" {
-			return true, "{}", errors.New(h.Err)
-		}
-		return true, string(data), err
-	} else {
-		return false, "", nil
-	}
-}
-
-func (h *testTicketHandler) marshal() ([]byte, error) {
-	return json.Marshal(h)
-}
-
-func (h *testTicketHandler) unmarshal(data []byte) error {
-	return json.Unmarshal(data, h)
-}
-
-type testEventHandler struct{}
-
-func (e *testEventHandler) OnEvent(typ, id, data string, err error) {
+func (e *asyncTestEventHandler) OnEvent(typ, id, data string, err error) {
 	defer wgAsyncTest.Done()
 	log.Info("Test event received. Id: ", id)
 	_err := ""
@@ -114,8 +83,7 @@ func TestTicketSystem(t *testing.T) {
 	if err := os.Mkdir(dir+"/TestTicketSystemIdentity2", 0777); err != nil {
 		panic(err)
 	}
-	fmt.Println(c.Web3Url)
-	eventHandler := &testEventHandler{}
+	eventHandler := &asyncTestEventHandler{}
 	id1, err := NewIdentity(dir+"/TestTicketSystemIdentity1", "pass_TestTicketSystem1", c.Web3Url, 1, NewBytesArray(), eventHandler)
 	require.Nil(t, err)
 	id2, err := NewIdentity(dir+"/TestTicketSystemIdentity2", "pass_TestTicketSystem2", c.Web3Url, 1, NewBytesArray(), eventHandler)
@@ -167,6 +135,8 @@ func TestTicketSystem(t *testing.T) {
 	// Cancel ticket remove2
 	require.Nil(t, id1.Tickets.Cancel("id1 - remove2"))
 	wgAsyncTest.Done()
+	// Randomize goroutines excution
+	time.Sleep(time.Duration(1 * time.Millisecond))
 	require.Nil(t, id2.Tickets.Cancel("id2 - remove2"))
 	wgAsyncTest.Done()
 	// Randomize goroutines excution

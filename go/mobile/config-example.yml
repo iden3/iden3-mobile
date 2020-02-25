@@ -1,1 +1,6 @@
-web3Url: http://web3Url/toekn
+web3Url: https://goerli.infura.io/v3/XXXXXXXXXX
+issuerUrl: http://127.0.0.1:1234/
+verifierUrl: http://127.0.0.1:1234/
+verifierAttempts: 10 # seconds
+verifierRetryPeriod: 10 # seconds
+holderTicketPeriod: 1000 # miliseconds

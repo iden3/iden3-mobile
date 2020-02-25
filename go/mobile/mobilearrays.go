@@ -34,19 +34,20 @@ func (ba *BytesArray) Append(bs []byte) {
 	ba.array = append(ba.array, bs)
 }
 
-func (ba *BytesArray) toEntriers() ([]merkletree.Entrier, error) {
-	entriers := []merkletree.Entrier{}
-	for i := 0; i < ba.Len(); i++ {
-		entry, err := merkletree.NewEntryFromBytes(ba.Get(i))
-		if err != nil {
-			return entriers, err
-		}
-		entriers = append(entriers, &byteEntrier{
-			entry: entry,
-		})
-	}
-	return entriers, nil
-}
+// TODO: impl
+// func (ba *BytesArray) toClaimers() ([]claims.Claimer, error) {
+// 	claimers := []claims.Claimer{}
+// 	for i := 0; i < ba.Len(); i++ {
+// 		entry, err := merkletree.NewEntryFromBytes(ba.Get(i))
+// 		if err != nil {
+// 			return entriers, err
+// 		}
+// 		entriers = append(entriers, &byteEntrier{
+// 			entry: entry,
+// 		})
+// 	}
+// 	return entriers, nil
+// }
 
 func (e *byteEntrier) Entry() *merkletree.Entry {
 	return e.entry

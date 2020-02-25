@@ -9,15 +9,15 @@ require (
 	github.com/btcsuite/btcutil v1.0.1 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/elastic/gosigar v0.10.5 // indirect
-	github.com/ethereum/go-ethereum v1.9.10
+	github.com/ethereum/go-ethereum v1.9.11
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/go-playground/validator/v10 v10.2.0
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/iden3/go-iden3-core v0.0.7-0.20200217140153-bf229e481544
+	github.com/iden3/go-iden3-core v0.0.7-0.20200221170011-5d44e8c442e6
 	github.com/iden3/go-iden3-crypto v0.0.3-0.20190831180703-c95c95b7b161
-	github.com/ipfs/go-ipfs-util v0.0.1 // indirect
+	github.com/iden3/go-iden3-servers-demo v0.0.0-20200222110233-acd5cba4952c
 	github.com/ipfs/go-log v1.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
@@ -28,10 +28,8 @@ require (
 	github.com/libp2p/go-libp2p-host v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-interface-connmgr v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-interface-pnet v0.1.0 // indirect
-	github.com/libp2p/go-libp2p-metrics v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-nat v0.0.5 // indirect
 	github.com/libp2p/go-libp2p-net v0.1.0 // indirect
-	github.com/libp2p/go-libp2p-peer v0.2.0 // indirect
 	github.com/libp2p/go-libp2p-peerstore v0.1.4 // indirect
 	github.com/libp2p/go-libp2p-protocol v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-secio v0.2.1 // indirect
@@ -56,5 +54,6 @@ require (
 	golang.org/x/mobile v0.0.0-20200123024942-82c397c4c527 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
-	gopkg.in/yaml.v2 v2.2.2
+	gopkg.in/go-playground/assert.v1 v1.2.1
+	gopkg.in/yaml.v2 v2.2.4
 )

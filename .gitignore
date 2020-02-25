@@ -1,9 +1,15 @@
 vendor/
 .vscode
+####### tmp
+flutter/
+android/
+helper-scripts/
+####### mockup server
+go/mockupServer/main/main
 ####### gomobile
 go/mobile/config.yml
 go/mobile/iden3-mobile-sources.jar
-#go/mobile/iden3mobile
+go/mobile/iden3mobile
 # uncompressed jar
 go/mobile/go
 go/mobile/META-INF
@@ -114,7 +120,7 @@ unlinked_spec.ds
 # Built application files
 *.apk
 *.aar
-!flutter/android/app/src/main/libs/iden3-mobile.aar
+# !flutter/android/app/src/main/libs/iden3-mobile.aar
 *.ap_
 *.aab
 
@@ -166,8 +172,8 @@ captures/
 
 # Keystore files
 # Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+*.jks
+*.keystore
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

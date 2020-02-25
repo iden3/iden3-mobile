@@ -1,7 +1,6 @@
 package iden3mobile
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -11,7 +10,12 @@ import (
 )
 
 type config struct {
-	Web3Url string `yaml:"web3Url"`
+	Web3Url             string `yaml:"web3Url"`
+	IssuerUrl           string `yaml:"issuerUrl"`
+	VerifierUrl         string `yaml:"verifierUrl"`
+	VerifierAttempts    int    `yaml:"verifierAttempts"`
+	VerifierRetryPeriod int    `yaml:"verifierRetryPeriod"`
+	HolderTicketPeriod  int    `yaml:"holderTicketPeriod"`
 }
 
 const dir = "./tmp"
@@ -46,7 +50,6 @@ func TestNewIdentity(t *testing.T) {
 	if err := os.Mkdir(dir+"/TestNewIdentity", 0777); err != nil {
 		panic(err)
 	}
-	fmt.Println(c.Web3Url)
 	id, err := NewIdentity(dir+"/TestNewIdentity", "pass_TestNewIdentity", c.Web3Url, 100, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Stop identity
