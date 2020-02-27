@@ -15,18 +15,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type (
-	conf struct {
-		IP                string
-		TimeToAproveClaim time.Duration
-		TimeToVerify      time.Duration
-	}
+type conf struct {
+	IP                string
+	TimeToAproveClaim time.Duration
+	TimeToVerify      time.Duration
+}
 
-	counter struct {
-		sync.Mutex
-		n int
-	}
-)
+type counter struct {
+	sync.Mutex
+	n int
+}
 
 var c = conf{}
 var claimCounter = counter{n: 0}

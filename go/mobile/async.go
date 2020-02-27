@@ -10,64 +10,109 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type (
-	Event interface {
-		OnEvent(string, string, string, error) // Type, Ticket ID, Data(json), error
-	}
+type Event interface {
+	EventHandler(string, string, string, error) // Type, Ticket ID, Data(json), error
+	// EventHandler(TicketType, string, string, error) // Type, Ticket ID, Data(json), error
+}
 
-	Callback interface {
-		VerifierResponse(bool, error)
-		RequestClaimResponse(*Ticket, error)
-	}
+type Callback interface {
+	VerifierResHandler(bool, error)
+	RequestClaimResHandler(*Ticket, error)
+}
 
-	ticketInterface interface {
-		isDone(*Identity) (bool, string, error)
-		marshal() ([]byte, error)
-		unmarshal([]byte) error
-	}
+type ticketInterface interface {
+	isDone(*Identity) (bool, string, error)
+}
 
-	Ticket struct {
-		Id                   string
-		LastChecked          int64
-		Type                 string
-		handler              ticketInterface
-		HandlerMarshaledData []byte
-	}
+type TicketType string
+type TicketStatus string
+
+const (
+	TicketTypeClaimStatus = "RequestClaimStatus"
+	TicketTypeClaimCred   = "RequestClaimCredential"
+	TicketTypeTest        = "test ticket"
+	TicketStatusDone      = "Done"
+	TicketStatusDoneError = "Done with error"
+	TicketStatusPending   = "Pending"
+	TicketStatusCancel    = "Canceled"
 )
 
-func (i *Identity) addTicket(t *Ticket) {
-	i.Tickets.Lock()
-	i.Tickets.m[t.Id] = t
-	i.Tickets.Unlock()
-	log.Info("Ticket added: Type: ", t.Type, ". ID: ", t.Id)
+type Ticket struct {
+	Id                   string
+	LastChecked          int64
+	Type                 string
+	Status               string
+	handler              ticketInterface
+	HandlerMarshaledJSON []byte
+}
+
+type TicketOperator interface {
+	Iterate(*Ticket) (bool, error)
+}
+
+const ticketPrefix = "tickets"
+
+func (i *Identity) addTickets(tickets []Ticket) error {
+	if len(tickets) == 0 {
+		return errors.New("tickets is empty!")
+	}
+	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
+	tx, err := ticketsDB.NewTx()
+	if err != nil {
+		return err
+	}
+	log.Info("Adding / Updating ", len(tickets), " tickets")
+	for _, ticket := range tickets {
+		hdlrData, err := json.Marshal(ticket.handler)
+		if err != nil {
+			return err
+		}
+		ticket.HandlerMarshaledJSON = hdlrData
+		if err := db.StoreJSON(tx, []byte(ticket.Id), ticket); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (i *Identity) checkPendingTickets(checkPendingTicketsPeriod time.Duration) {
 	// TODO: give more control to native host (check now, ...): Impl ctx context, Check out futures @ rust for inspiration.
 	for {
-		var wg sync.WaitGroup
-		i.Tickets.Lock()
-		// Stop the loop?
-		if i.Tickets.shouldStop {
+		// Should stop?
+		select {
+		case <-i.stopTickets:
 			log.Info("Stopping check pending tickets routine")
-			i.Tickets.Unlock()
 			return
+		default:
 		}
-		// Check tickets
-		log.Info("Checking ", len(i.Tickets.m), " pending tickets")
-		finishedTickets := make([]string, len(i.Tickets.m))
-		index := 0
-		for _, t := range i.Tickets.m {
+		tickets, err := i.getPendingTickets()
+		if err != nil {
+			// Should cause panic instead?
+			log.Error("Error loading pending tickets", err)
+			time.Sleep(checkPendingTicketsPeriod)
+			continue
+		}
+		var wg sync.WaitGroup
+		nPendingTickets := len(tickets)
+		finished := make(chan Ticket, nPendingTickets)
+		log.Info("Checking ", nPendingTickets, " pending tickets")
+		for _, ticket := range tickets {
 			// Check ticket
 			wg.Add(1)
-			go func(t *Ticket, index int) {
+			go func(t Ticket) {
 				defer wg.Done()
 				isDone, data, err := t.handler.isDone(i)
 				if isDone {
 					// Resolve ticket
 					log.Info("Sending event for ticket: " + t.Id)
-					finishedTickets[index] = t.Id
-					i.eventSender.OnEvent(t.Type, t.Id, data, err)
+					// TODO: should event sending be serialized? what if it takes too long to come back?
+					i.eventSender.EventHandler(t.Type, t.Id, data, err)
+					if err != nil {
+						t.Status = TicketStatusDoneError
+					} else {
+						t.Status = TicketStatusDone
+					}
+					finished <- t
 				} else {
 					if err != nil {
 						log.Error("Error handling ticket: "+t.Id, err)
@@ -75,113 +120,111 @@ func (i *Identity) checkPendingTickets(checkPendingTicketsPeriod time.Duration) 
 					// Update last checked time
 					t.LastChecked = int64(time.Now().Unix())
 				}
-			}(t, index)
-			index++
+			}(*ticket)
 		}
-		// Wait until all tickets have been checked
 		wg.Wait()
-		// Delete resolved tickets
-		finishedTicketsCounter := 0
-		totalTickets := len(i.Tickets.m)
-		for _, key := range finishedTickets {
-			if key != "" {
-				delete(i.Tickets.m, key)
-				finishedTicketsCounter++
+		// Update tickets that are done
+		close(finished)
+		var finishedTickets []Ticket
+		nResolvedTickets := 0
+		for ticket := range finished {
+			finishedTickets = append(finishedTickets, ticket)
+			nResolvedTickets++
+		}
+		log.Info("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
+		if len(finishedTickets) > 0 {
+			if err := i.addTickets(finishedTickets); err != nil {
+				log.Error("Error updating tickets that have been resolved. Will check them next iteration.")
 			}
 		}
-		i.Tickets.Unlock()
-		log.Info("Done checking pending tickets: ", finishedTicketsCounter, "/", totalTickets, " resolved")
-		// Stop the loop?
-		if i.Tickets.shouldStop {
+		// Should stop?
+		select {
+		case <-i.stopTickets:
 			log.Info("Stopping check pending tickets routine")
 			return
+		default:
 		}
-		// Go to sleep
-		log.Info("Sleeping before checking tickets again")
+		// Sleep
 		time.Sleep(checkPendingTicketsPeriod)
 	}
 }
 
-func (t *Ticket) marshal() ([]byte, error) {
-	hdlrData, err := t.handler.marshal()
-	if err != nil {
-		return nil, err
-	}
-	t.HandlerMarshaledData = hdlrData
-	return json.Marshal(t)
-}
-
-func unmarshalTicket(data []byte) (*Ticket, error) {
-	t := &Ticket{}
-	if err := json.Unmarshal(data, t); err != nil {
-		return nil, err
-	}
+func unmarshalTicketHandler(typ string, data []byte) (ticketInterface, error) {
 	var handler ticketInterface
-	switch t.Type {
-	case "RequestClaimStatus":
+	switch typ {
+	case TicketTypeClaimStatus:
 		handler = &reqClaimStatusHandler{}
-	case "RequestClaimCredential":
+	case TicketTypeClaimCred:
 		handler = &reqClaimCredentialHandler{}
-	case "test ticket":
+	case TicketTypeTest:
 		handler = &testTicketHandler{}
 	default:
-		return t, errors.New("Wrong ticket type")
+		return nil, errors.New("Wrong ticket type")
 	}
-	if err := handler.unmarshal(t.HandlerMarshaledData); err != nil {
-		return t, err
+	if err := json.Unmarshal(data, &handler); err != nil {
+		return nil, err
 	}
-	t.handler = handler
-	return t, nil
+	return handler, nil
 }
 
-func (i *Identity) loadTickets() {
-	// Load pending tickets
-	tickets := make(map[string][]byte)
-	err := db.LoadJSON(i.storage, []byte("pendingTickets"), &tickets)
-	if err == nil {
-		log.Info("Loading ", len(tickets), " pending tickets")
-		for _, t := range tickets {
-			ticket, err := unmarshalTicket(t)
-			if err != nil {
-				log.Error("Error loading ticket: ", err)
-			} else {
-				i.Tickets.m[ticket.Id] = ticket
-			}
-		}
-	} else {
-		log.Error("Error loading pending tickets: ", err)
+func loadTicket(key, value []byte) (*Ticket, error) {
+	ticket := &Ticket{}
+	if err := json.Unmarshal(value, ticket); err != nil {
+		return nil, err
 	}
-}
-
-func (i *Identity) storeTickets() {
-	// If the pending tickets loop is running, wait
-	i.Tickets.RLock()
-	defer i.Tickets.RUnlock()
-	// Marshal tickets
-	marshaledTickets := make(map[string][]byte)
-	log.Info("Storing ", len(i.Tickets.m), " pending tickets")
-	for _, t := range i.Tickets.m {
-		// Marshal ticket
-		data, err := t.marshal()
-		if err != nil {
-			log.Error("Error storing ticket", t.Id, err)
-		} else {
-			marshaledTickets[t.Id] = data
-		}
-	}
-	// Store pending tickets
-	tx, err := i.storage.NewTx()
+	handler, err := unmarshalTicketHandler(ticket.Type, ticket.HandlerMarshaledJSON)
 	if err != nil {
-		log.Error("Error storing ALL tickets", err)
-		return
+		return nil, err
 	}
-	if err := db.StoreJSON(tx, []byte("pendingTickets"), marshaledTickets); err != nil {
-		log.Error("Error storing ALL tickets", err)
-		return
+	ticket.handler = handler
+	return ticket, nil
+}
+
+func (i *Identity) getPendingTickets() ([]*Ticket, error) {
+	var tickets []*Ticket
+	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
+	if err := ticketsDB.Iterate(func(key, value []byte) (bool, error) {
+		// load ticket
+		ticket, err := loadTicket(key, value)
+		if err != nil {
+			return false, err
+		}
+		// only keep the ones that are not done
+		if ticket.Status == TicketStatusPending {
+			tickets = append(tickets, ticket)
+			return true, nil
+		}
+		return true, nil
+	}); err != nil {
+		return nil, err
 	}
-	if err := tx.Commit(); err != nil {
-		log.Error("Error storing ALL tickets", err)
+	return tickets, nil
+}
+
+func (i *Identity) IterateTickets(handler TicketOperator) error {
+	if err := i.storage.WithPrefix([]byte(ticketPrefix)).Iterate(
+		func(key, value []byte) (bool, error) {
+			// load ticket
+			ticket, err := loadTicket(key, value)
+			if err != nil {
+				return false, err
+			}
+			return handler.Iterate(ticket)
+		},
+	); err != nil {
+		return err
 	}
+	return nil
+}
+
+func (i *Identity) CancelTicket(id string) error {
+	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
+	ticket := Ticket{}
+	if err := db.LoadJSON(ticketsDB, []byte(id), &ticket); err != nil {
+		return err
+	}
+	ticket.Status = TicketStatusCancel
+	return i.addTickets([]Ticket{ticket})
 }
 
 // TODO: Move this code to test
@@ -192,7 +235,7 @@ type testTicketHandler struct {
 
 func (h *testTicketHandler) isDone(id *Identity) (bool, string, error) {
 	if h.SayImDone {
-		data, err := h.marshal()
+		data, err := json.Marshal(h)
 		if err != nil {
 			return true, "{}", err
 		}
@@ -203,12 +246,4 @@ func (h *testTicketHandler) isDone(id *Identity) (bool, string, error) {
 	} else {
 		return false, "", nil
 	}
-}
-
-func (h *testTicketHandler) marshal() ([]byte, error) {
-	return json.Marshal(h)
-}
-
-func (h *testTicketHandler) unmarshal(data []byte) error {
-	return json.Unmarshal(data, h)
 }

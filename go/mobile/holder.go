@@ -4,34 +4,31 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/iden3/go-iden3-core/components/httpclient"
-	"github.com/iden3/go-iden3-core/core/proof"
-	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/merkletree"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	verifierMsg "github.com/iden3/go-iden3-servers-demo/servers/verifier/messages"
 	log "github.com/sirupsen/logrus"
 )
 
-type (
-	reqClaimStatusHandler struct {
-		Id      int
-		BaseUrl string
-	}
+type reqClaimStatusHandler struct {
+	Id      int
+	BaseUrl string
+}
 
-	reqClaimStatusEvent struct {
-		Claim            *merkletree.Entry
-		CredentialTicket *Ticket
-	}
+type reqClaimStatusEvent struct {
+	Claim            *merkletree.Entry
+	CredentialTicket *Ticket
+}
 
-	reqClaimCredentialHandler struct {
-		Claim   *merkletree.Entry
-		BaseUrl string
-	}
-)
+type reqClaimCredentialHandler struct {
+	Claim   *merkletree.Entry
+	BaseUrl string
+}
+
+// TODO: async wrappers (with and without callback)
 
 // RequestClaim sends a petition to issue a claim to an issuer.
 // This function will eventually trigger an event,
@@ -40,8 +37,9 @@ func (i *Identity) RequestClaim(baseUrl, data string, c Callback) {
 	go func() {
 		id := uuid.New().String()
 		t := &Ticket{
-			Id:   id,
-			Type: "RequestClaimStatus",
+			Id:     id,
+			Type:   TicketTypeClaimStatus,
+			Status: TicketStatusPending,
 		}
 		httpClient := httpclient.NewHttpClient(baseUrl)
 		res := issuerMsg.ResClaimRequest{}
@@ -49,15 +47,15 @@ func (i *Identity) RequestClaim(baseUrl, data string, c Callback) {
 			"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
 			Value: data,
 		}), &res); err != nil {
-			c.RequestClaimResponse(nil, err)
+			c.RequestClaimResHandler(nil, err)
 			return
 		}
 		t.handler = &reqClaimStatusHandler{
 			Id:      res.Id,
 			BaseUrl: baseUrl,
 		}
-		i.addTicket(t)
-		c.RequestClaimResponse(t, nil)
+		err := i.addTickets([]Ticket{*t})
+		c.RequestClaimResHandler(t, err)
 	}()
 }
 
@@ -71,6 +69,7 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 		fmt.Sprintf("claim/status/%v", h.Id)).Get(""), &res); err != nil {
 		return true, "{}", err
 	}
+	// TODO: returned "json" should be equal in all cases
 	switch res.Status {
 	case issuerMsg.RequestStatusPending:
 		return false, "", nil
@@ -83,15 +82,18 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 	case issuerMsg.RequestStatusApproved:
 		// Create new ticket to handle credential request
 		ticket := &Ticket{
-			Id:   uuid.New().String(),
-			Type: "RequestClaimCredential",
+			Id:     uuid.New().String(),
+			Type:   TicketTypeClaimCred,
+			Status: TicketStatusPending,
 			handler: &reqClaimCredentialHandler{
 				Claim:   res.Claim,
 				BaseUrl: h.BaseUrl,
 			},
 		}
 		// Add credential request ticket
-		go id.addTicket(ticket)
+		if err := id.addTickets([]Ticket{*ticket}); err != nil {
+			return true, "{}", err
+		}
 		// Send event with received claim and credential request ticket
 		event := reqClaimStatusEvent{
 			Claim:            res.Claim,
@@ -105,14 +107,6 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 	default:
 		return true, "{}", errors.New("Unexpected response from issuer")
 	}
-}
-
-func (h *reqClaimStatusHandler) marshal() ([]byte, error) {
-	return json.Marshal(h)
-}
-
-func (h *reqClaimStatusHandler) unmarshal(data []byte) error {
-	return json.Unmarshal(data, &h)
 }
 
 func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
@@ -148,14 +142,6 @@ func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
 	}
 }
 
-func (h *reqClaimCredentialHandler) marshal() ([]byte, error) {
-	return json.Marshal(h)
-}
-
-func (h *reqClaimCredentialHandler) unmarshal(data []byte) error {
-	return json.Unmarshal(data, &h)
-}
-
 // ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier
 // the callback is used to check if the verifier has accepted the credential as valid
 func (i *Identity) ProveClaim(baseUrl string, credIndex int, c Callback) {
@@ -164,13 +150,13 @@ func (i *Identity) ProveClaim(baseUrl string, credIndex int, c Callback) {
 		// Get credential existance
 		credExis, err := i.getReceivedCredential(credIndex)
 		if err != nil {
-			c.VerifierResponse(false, err)
+			c.VerifierResHandler(false, err)
 			return
 		}
 		// Build credential validity
 		credVal, err := i.id.HolderGetCredentialValidity(&credExis)
 		if err != nil {
-			c.VerifierResponse(false, err)
+			c.VerifierResHandler(false, err)
 			return
 		}
 		// Send credential to verifier
@@ -180,72 +166,10 @@ func (i *Identity) ProveClaim(baseUrl string, credIndex int, c Callback) {
 			CredentialValidity: credVal,
 		}), nil); err != nil {
 			// Credential declined / error
-			c.VerifierResponse(false, err)
+			c.VerifierResHandler(false, err)
 			return
 		}
 		// Success
-		c.VerifierResponse(true, nil)
+		c.VerifierResHandler(true, nil)
 	}()
-}
-
-func (i *Identity) addCredentialExistance(cred proof.CredentialExistence) error {
-	tx, err := i.storage.NewTx()
-	if err != nil {
-		return err
-	}
-	byteCounter, err := tx.Get([]byte("receivedCredentialsCounter"))
-	if err != nil {
-		return err
-	}
-	counter, err := strconv.Atoi(string(byteCounter))
-	if err != nil {
-		return err
-	}
-	if err := db.StoreJSON(tx, []byte("receivedCredential_"+strconv.Itoa(counter)), cred); err != nil {
-		return err
-	}
-	counter++
-	tx.Put([]byte("receivedCredentialsCounter"), []byte(strconv.Itoa(counter)))
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	log.Info("Stored new existence credential, with key = ", "receivedCredential_"+strconv.Itoa(counter-1))
-	return nil
-}
-
-// GetReceivedClaimsLen return the amount of received claims by the identity
-func (i *Identity) GetReceivedClaimsLen() (int, error) {
-	tx, err := i.storage.NewTx()
-	// get current amount of claims
-	if err != nil {
-		return 0, err
-	}
-	byteCounter, err := tx.Get([]byte("receivedCredentialsCounter"))
-	if err != nil {
-		return 0, err
-	}
-	counter, err := strconv.Atoi(string(byteCounter))
-	if err != nil {
-		return 0, err
-	}
-	return counter, nil
-}
-
-// GetReceivedClaim returns the requested claim
-func (i *Identity) GetReceivedClaim(pos int) ([]byte, error) {
-	cred, err := i.getReceivedCredential(pos)
-	if err != nil {
-		return nil, err
-	}
-	// TODO: return something nicer than bytes (metadata)
-	return cred.Claim.Bytes(), nil
-}
-
-func (i *Identity) getReceivedCredential(pos int) (proof.CredentialExistence, error) {
-	var cred proof.CredentialExistence
-	log.Info("Loading existence credential, with key = ", "receivedCredential_"+strconv.Itoa(pos))
-	if err := db.LoadJSON(i.storage, []byte("receivedCredential_"+strconv.Itoa(pos)), &cred); err != nil {
-		return cred, err
-	}
-	return cred, nil
 }

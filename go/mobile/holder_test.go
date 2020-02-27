@@ -2,7 +2,7 @@ package iden3mobile
 
 import (
 	"encoding/json"
-	"os"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
@@ -11,47 +11,51 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type holderTestEventHandler struct{}
+type holderTestEvent struct{}
 
-type callbacker struct{}
+type callback struct{}
 type counter struct {
 	sync.Mutex
 	n int
 }
 
-func (c *callbacker) VerifierResponse(success bool, err error) {
+func (c *callback) VerifierResHandler(success bool, err error) {
 	defer wgCallbackTest.Done()
 	verificationCounter.Lock()
 	defer verificationCounter.Unlock()
-	log.Info("--- TEST LOG: Callback VerifierResponse. Successs: ", success, ". Error: ", err)
+	log.Info("--- TEST LOG: Callback VerifierResHandler. Successs: ", success, ". Error: ", err)
 	if !success || err != nil {
 		return
 	}
 	verificationCounter.n++
 }
 
-func (c *callbacker) RequestClaimResponse(ticket *Ticket, err error) {
+func (c *callback) RequestClaimResHandler(ticket *Ticket, err error) {
 	defer wgCallbackTest.Done()
-	log.Info("--- TEST LOG: Callback RequestClaimResponse. Ticket: ", ticket, ". Error: ", err)
+	log.Info("--- TEST LOG: Callback RequestClaimResHandler. Ticket: ", ticket, ". Error: ", err)
 	if err != nil {
 		panic("Callback with error: " + err.Error())
 	} else {
-		expectedEvents[ticket.Id] = event{Typ: ticket.Type}
+		expectedEvents.Lock()
+		defer expectedEvents.Unlock()
+		expectedEvents.Map[ticket.Id] = event{Typ: ticket.Type}
 		wgHolderTest.Add(1)
 	}
 }
 
-func (e *holderTestEventHandler) OnEvent(typ, id, data string, err error) {
+func (e *holderTestEvent) EventHandler(typ string, id, data string, err error) {
 	defer wgHolderTest.Done()
 	if err != nil {
 		panic("Test event received with error: " + err.Error())
 	}
 	log.Info("--- TEST LOG: Test event received. Type: ", typ, ". Id: ", id, ". Data: ", data)
 	// Check if the event was expected
-	if ev, ok := expectedEvents[id]; !ok || ev.Typ != typ {
+	expectedEvents.Lock()
+	defer expectedEvents.Unlock()
+	if ev, ok := expectedEvents.Map[id]; !ok || ev.Typ != typ {
 		panic("Unexpected event")
 	} else {
-		delete(expectedEvents, id)
+		delete(expectedEvents.Map, id)
 	}
 	// Evaluate event
 	switch typ {
@@ -64,7 +68,7 @@ func (e *holderTestEventHandler) OnEvent(typ, id, data string, err error) {
 		if d.CredentialTicket.Type != "RequestClaimCredential" {
 			panic("Unexpected CredentialTicket type")
 		}
-		expectedEvents[d.CredentialTicket.Id] = event{
+		expectedEvents.Map[d.CredentialTicket.Id] = event{
 			Id:  d.CredentialTicket.Id,
 			Typ: d.CredentialTicket.Type,
 		}
@@ -86,21 +90,24 @@ var wgCallbackTest sync.WaitGroup
 var verificationCounter = counter{n: 0}
 
 func TestHolder(t *testing.T) {
-	expectedEvents = make(map[string]event)
+	expectedEvents = eventsMap{
+		Map: make(map[string]event),
+	}
 	// Create two new identities without extra claims
-	if err := os.Mkdir(dir+"/TestHolderIdentity1", 0777); err != nil {
-		panic(err)
-	}
-	if err := os.Mkdir(dir+"/TestHolderIdentity2", 0777); err != nil {
-		panic(err)
-	}
-	eventHandler := &holderTestEventHandler{}
-	id1, err := NewIdentity(dir+"/TestHolderIdentity1", "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
+	dir1, err := ioutil.TempDir("", "holderTest1")
 	require.Nil(t, err)
-	id2, err := NewIdentity(dir+"/TestHolderIdentity2", "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
+	rmDirs = append(rmDirs, dir1)
+	dir2, err := ioutil.TempDir("", "holderTest2")
+	require.Nil(t, err)
+	rmDirs = append(rmDirs, dir2)
+
+	eventHandler := &holderTestEvent{}
+	id1, err := NewIdentity(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
+	require.Nil(t, err)
+	id2, err := NewIdentity(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
 	require.Nil(t, err)
 	// Request claim
-	cllbck := &callbacker{}
+	cllbck := &callback{}
 	wgCallbackTest.Add(2)
 	id1.RequestClaim(c.IssuerUrl, id1.id.ID().String(), cllbck)
 	id2.RequestClaim(c.IssuerUrl, id2.id.ID().String(), cllbck)
@@ -109,9 +116,9 @@ func TestHolder(t *testing.T) {
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityLoad(dir+"/TestHolderIdentity1", "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
 	require.Nil(t, err)
-	id2, err = NewIdentityLoad(dir+"/TestHolderIdentity2", "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
 	wgHolderTest.Wait()
@@ -120,9 +127,9 @@ func TestHolder(t *testing.T) {
 	// Do it after reload identities to test claim persistance
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityLoad(dir+"/TestHolderIdentity1", "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
 	require.Nil(t, err)
-	id2, err = NewIdentityLoad(dir+"/TestHolderIdentity2", "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
 	require.Nil(t, err)
 	_, err = id1.GetReceivedClaim(0)
 	require.Nil(t, err)

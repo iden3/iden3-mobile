@@ -20,23 +20,28 @@ import (
 )
 
 type Identity struct {
-	id          *holder.Holder
-	Tickets     *TicketsMap
+	id *holder.Holder
+	// Tickets     *TicketsMap
 	eventSender Event
 	storage     db.Storage
+	stopTickets chan (bool)
 }
 
-// TODO:
-// store on changes vs store on stop
+const (
+	kOpStorKey           = "kOpComp"
+	storageSubPath       = "/idStore"
+	keyStorageSubPath    = "/idKeyStore"
+	smartContractAddress = "0xF6a014Ac66bcdc1BF51ac0fa68DF3f17f4b3e574"
+)
 
 // NewIdentity creates a new identity
 // this funciton is mapped as a constructor in Java.
-// NOTE: The storePath must be unique per Identity
+// NOTE: The storePath must be unique per Identity.
+// NOTE: Right now the extraGenesisClaims is useless.
 func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, e Event) (*Identity, error) {
-	id := &Identity{}
 	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
 	if err != nil {
-		return id, err
+		return nil, err
 	}
 	resourcesAreClosed := false
 	defer func() {
@@ -48,29 +53,26 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	// Create babyjub keys
 	kOpComp, err := keyStore.NewKey([]byte(pass))
 	if err != nil {
-		return id, err
+		return nil, err
 	}
 	if err = keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
-		return id, err
+		return nil, err
 	}
 	// Store kOpComp
 	tx, err := storage.NewTx()
 	if err != nil {
-		return id, err
+		return nil, err
 	}
-	if err := db.StoreJSON(tx, []byte("kOpComp"), kOpComp); err != nil {
-		return id, err
+	if err := db.StoreJSON(tx, []byte(kOpStorKey), kOpComp); err != nil {
+		return nil, err
 	}
-	// Init claim DB
-	tx.Put([]byte("receivedCredentialsCounter"), []byte("0"))
 	if err := tx.Commit(); err != nil {
-		return id, err
+		return nil, err
 	}
-	// Parse extra genesis claims
-	// TODO: Call toClaimers once it's implemented
+	// TODO: Parse extra genesis claims. Call toClaimers once it's implemented
 	// _extraGenesisClaims, err := extraGenesisClaims.toClaimers()
 	if err != nil {
-		return id, err
+		return nil, err
 	}
 	// Create new Identity (holder)
 	_, err = holder.New(
@@ -84,7 +86,17 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 		readerhttp.NewIdenPubOffChainHttp(),
 	)
 	if err != nil {
-		return id, err
+		return nil, err
+	}
+	// Init claim DB
+	credDB := storage.WithPrefix([]byte(credExisPrefix))
+	tx, err = credDB.NewTx()
+	if err != nil {
+		return nil, err
+	}
+	tx.Put([]byte(credCounterKey), []byte("0"))
+	if err := tx.Commit(); err != nil {
+		return nil, err
 	}
 	// Verify that the Identity can be loaded successfully
 	keyStore.Close()
@@ -97,16 +109,15 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 // this funciton is mapped as a constructor in Java
 func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e Event) (*Identity, error) {
 	// TODO: figure out how to diferentiate the two constructors from Java: https://github.com/iden3/iden3-mobile/issues/17#issuecomment-587374644
-	id := &Identity{}
 	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
 	if err != nil {
-		return id, err
+		return nil, err
 	}
 	defer keyStore.Close()
 	// Unlock key store
 	kOpComp := &babyjub.PublicKeyComp{}
-	if err := db.LoadJSON(storage, []byte("kOpComp"), kOpComp); err != nil {
-		return id, err
+	if err := db.LoadJSON(storage, []byte(kOpStorKey), kOpComp); err != nil {
+		return nil, err
 	}
 	if err := keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
 		return nil, fmt.Errorf("Error unlocking babyjub key from keystore: %w", err)
@@ -114,29 +125,24 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	// Load existing Identity (holder)
 	holdr, err := holder.Load(storage, keyStore, idenPubOnChain, nil, readerhttp.NewIdenPubOffChainHttp())
 	if err != nil {
-		return id, err
+		return nil, err
 	}
 	// Init Identity
-	id.id = holdr
-	id.Tickets = &TicketsMap{
-		m: make(map[string]*Ticket),
+	iden := &Identity{
+		id:          holdr,
+		eventSender: e,
+		storage:     storage,
 	}
-	id.eventSender = e
-	id.storage = storage
-	id.loadTickets()
-	go id.checkPendingTickets(time.Duration(checkTicketsPeriodMilis * 1000000))
-	return id, nil
+	iden.stopTickets = make(chan bool)
+	go iden.checkPendingTickets(time.Duration(checkTicketsPeriodMilis) * time.Millisecond)
+	return iden, nil
 }
-
-// TODO: update marshal functions (s *Struct) ==> (s Struct)
 
 // Stop close all the open resources of the Identity
 func (i *Identity) Stop() {
 	log.Info("Stopping identity: ", i.id.ID())
 	defer i.storage.Close()
-	// Send "singnal" to stop the pending tickets loop
-	i.Tickets.shouldStop = true
-	i.storeTickets()
+	i.stopTickets <- true
 }
 
 func loadComponents(storePath, web3Url string) (idenpubonchain.IdenPubOnChainer, *babykeystore.KeyStore, db.Storage, error) {
@@ -156,7 +162,7 @@ func loadComponents(storePath, web3Url string) (idenpubonchain.IdenPubOnChainer,
 }
 
 func loadStorage(baseStorePath string) (db.Storage, error) {
-	storagePath := baseStorePath + "/idStore"
+	storagePath := baseStorePath + storageSubPath
 	// Open database
 	storage, err := db.NewLevelDbStorage(storagePath, false)
 	if err != nil {
@@ -167,7 +173,7 @@ func loadStorage(baseStorePath string) (db.Storage, error) {
 }
 
 func loadKeyStoreBabyJub(baseStorePath string) (*babykeystore.KeyStore, error) {
-	storagePath := baseStorePath + "/keyStore"
+	storagePath := baseStorePath + keyStorageSubPath
 	// Open keystore
 	storage := babykeystore.NewFileStorage(storagePath)
 	ks, err := babykeystore.NewKeyStore(storage, babykeystore.StandardKeyStoreParams)
@@ -202,7 +208,7 @@ func loadIdenPubOnChain(web3Url string) (idenpubonchain.IdenPubOnChainer, error)
 		return nil, err
 	}
 	addresses := idenpubonchain.ContractAddresses{
-		IdenStates: common.HexToAddress("0xF6a014Ac66bcdc1BF51ac0fa68DF3f17f4b3e574"), // TODO: hardcode the address
+		IdenStates: common.HexToAddress(smartContractAddress), // TODO: hardcode the address
 	}
 	return idenpubonchain.New(client, addresses), nil
 }

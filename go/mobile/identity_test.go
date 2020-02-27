@@ -18,9 +18,8 @@ type config struct {
 	HolderTicketPeriod  int    `yaml:"holderTicketPeriod"`
 }
 
-const dir = "./tmp"
-
 var c config
+var rmDirs []string
 
 func TestMain(m *testing.M) {
 	// Load config file
@@ -32,30 +31,26 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	// Create a tmp directory to store test files
-	os.RemoveAll(dir)
-	if err := os.Mkdir(dir, 0777); err != nil {
-		panic(err)
-	}
 	// Run tests
 	result := m.Run()
 	// Remove tmp directory
-	if err := os.RemoveAll(dir); err != nil {
-		panic(err)
+	for _, dir := range rmDirs {
+		os.RemoveAll(dir)
 	}
 	os.Exit(result)
 }
 
 func TestNewIdentity(t *testing.T) {
 	// New identity without extra claims
-	if err := os.Mkdir(dir+"/TestNewIdentity", 0777); err != nil {
-		panic(err)
-	}
-	id, err := NewIdentity(dir+"/TestNewIdentity", "pass_TestNewIdentity", c.Web3Url, 100, NewBytesArray(), nil)
+	dir1, err := ioutil.TempDir("", "identityTest")
+	rmDirs = append(rmDirs, dir1)
+	require.Nil(t, err)
+	id, err := NewIdentity(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
 	// Load identity
-	id, err = NewIdentityLoad(dir+"/TestNewIdentity", "pass_TestNewIdentity", c.Web3Url, 100, nil)
+	id, err = NewIdentityLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
