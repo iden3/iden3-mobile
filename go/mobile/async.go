@@ -38,12 +38,12 @@ const (
 )
 
 type Ticket struct {
-	Id                   string
-	LastChecked          int64
-	Type                 string
-	Status               string
-	handler              ticketInterface
-	HandlerMarshaledJSON []byte
+	Id          string
+	LastChecked int64
+	Type        string
+	Status      string
+	handler     ticketInterface
+	HandlerJSON json.RawMessage
 }
 
 type TicketOperator interface {
@@ -63,11 +63,6 @@ func (i *Identity) addTickets(tickets []Ticket) error {
 	}
 	log.Info("Adding / Updating ", len(tickets), " tickets")
 	for _, ticket := range tickets {
-		hdlrData, err := json.Marshal(ticket.handler)
-		if err != nil {
-			return err
-		}
-		ticket.HandlerMarshaledJSON = hdlrData
 		if err := db.StoreJSON(tx, []byte(ticket.Id), ticket); err != nil {
 			return err
 		}
@@ -149,35 +144,35 @@ func (i *Identity) checkPendingTickets(checkPendingTicketsPeriod time.Duration) 
 	}
 }
 
-func unmarshalTicketHandler(typ string, data []byte) (ticketInterface, error) {
-	var handler ticketInterface
-	switch typ {
-	case TicketTypeClaimStatus:
-		handler = &reqClaimStatusHandler{}
-	case TicketTypeClaimCred:
-		handler = &reqClaimCredentialHandler{}
-	case TicketTypeTest:
-		handler = &testTicketHandler{}
-	default:
-		return nil, errors.New("Wrong ticket type")
-	}
-	if err := json.Unmarshal(data, &handler); err != nil {
-		return nil, err
-	}
-	return handler, nil
-}
-
-func loadTicket(key, value []byte) (*Ticket, error) {
-	ticket := &Ticket{}
-	if err := json.Unmarshal(value, ticket); err != nil {
-		return nil, err
-	}
-	handler, err := unmarshalTicketHandler(ticket.Type, ticket.HandlerMarshaledJSON)
+func (t Ticket) MarshalJSON() ([]byte, error) {
+	handlerJSON, err := json.Marshal(t.handler)
 	if err != nil {
 		return nil, err
 	}
-	ticket.handler = handler
-	return ticket, nil
+	t.HandlerJSON = handlerJSON
+	type TicketAlias Ticket
+	return json.Marshal((*TicketAlias)(&t))
+}
+
+func (t *Ticket) UnmarshalJSON(b []byte) error {
+	type TicketAlias Ticket
+	if err := json.Unmarshal(b, (*TicketAlias)(t)); err != nil {
+		return err
+	}
+	switch t.Type {
+	case TicketTypeClaimStatus:
+		t.handler = &reqClaimStatusHandler{}
+	case TicketTypeClaimCred:
+		t.handler = &reqClaimCredentialHandler{}
+	case TicketTypeTest:
+		t.handler = &testTicketHandler{}
+	default:
+		return errors.New("Wrong ticket type")
+	}
+	if err := json.Unmarshal(t.HandlerJSON, t.handler); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (i *Identity) getPendingTickets() ([]*Ticket, error) {
@@ -185,13 +180,13 @@ func (i *Identity) getPendingTickets() ([]*Ticket, error) {
 	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
 	if err := ticketsDB.Iterate(func(key, value []byte) (bool, error) {
 		// load ticket
-		ticket, err := loadTicket(key, value)
-		if err != nil {
+		var ticket Ticket
+		if err := ticket.UnmarshalJSON(value); err != nil {
 			return false, err
 		}
 		// only keep the ones that are not done
 		if ticket.Status == TicketStatusPending {
-			tickets = append(tickets, ticket)
+			tickets = append(tickets, &ticket)
 			return true, nil
 		}
 		return true, nil
@@ -205,11 +200,11 @@ func (i *Identity) IterateTickets(handler TicketOperator) error {
 	if err := i.storage.WithPrefix([]byte(ticketPrefix)).Iterate(
 		func(key, value []byte) (bool, error) {
 			// load ticket
-			ticket, err := loadTicket(key, value)
-			if err != nil {
+			var ticket Ticket
+			if err := ticket.UnmarshalJSON(value); err != nil {
 				return false, err
 			}
-			return handler.Iterate(ticket)
+			return handler.Iterate(&ticket)
 		},
 	); err != nil {
 		return err
