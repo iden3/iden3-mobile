@@ -24,7 +24,8 @@ type Identity struct {
 	// Tickets     *TicketsMap
 	eventSender Event
 	storage     db.Storage
-	stopTickets chan (bool)
+	tickets     *Tickets
+	stopTickets chan bool
 }
 
 const (
@@ -132,9 +133,10 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 		id:          holdr,
 		eventSender: e,
 		storage:     storage,
+		tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
 	}
 	iden.stopTickets = make(chan bool)
-	go iden.checkPendingTickets(time.Duration(checkTicketsPeriodMilis) * time.Millisecond)
+	go iden.tickets.CheckPending(iden, iden.eventSender, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
 }
 

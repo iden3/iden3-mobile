@@ -54,7 +54,7 @@ func (i *Identity) RequestClaim(baseUrl, data string, c Callback) {
 			Id:      res.Id,
 			BaseUrl: baseUrl,
 		}
-		err := i.addTickets([]Ticket{*t})
+		err := i.tickets.Add([]Ticket{*t})
 		c.RequestClaimResHandler(t, err)
 	}()
 }
@@ -91,7 +91,7 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 			},
 		}
 		// Add credential request ticket
-		if err := id.addTickets([]Ticket{*ticket}); err != nil {
+		if err := id.tickets.Add([]Ticket{*ticket}); err != nil {
 			return true, "{}", err
 		}
 		// Send event with received claim and credential request ticket

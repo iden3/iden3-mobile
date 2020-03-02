@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iden3/go-iden3-core/db"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/require"
@@ -47,7 +48,7 @@ type eventsMap struct {
 
 var wgAsyncTest sync.WaitGroup
 
-func addTestTicket(id *Identity, ticketId, err, expectedData string, sayImDone, addToExpected bool) Ticket {
+func addTestTicket(ts *Tickets, ticketId, err, expectedData string, sayImDone, addToExpected bool) Ticket {
 	// Succes ticket before stop
 	wgAsyncTest.Add(1)
 	hdlr := &testTicketHandler{
@@ -60,7 +61,7 @@ func addTestTicket(id *Identity, ticketId, err, expectedData string, sayImDone, 
 		Status:  TicketStatusPending,
 		handler: hdlr,
 	}
-	if err := id.addTickets([]Ticket{ticket}); err != nil {
+	if err := ts.Add([]Ticket{ticket}); err != nil {
 		panic(err)
 	}
 	if addToExpected {
@@ -102,80 +103,89 @@ func TestTicketSystem(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
+	storage1, err := db.NewLevelDbStorage(dir1, false)
+	require.Nil(t, err)
+	storage2, err := db.NewLevelDbStorage(dir2, false)
+	require.Nil(t, err)
+
 	eventHandler := &asyncTestEvent{}
-	id1, err := NewIdentity(dir1, "pass_TestTicketSystem1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
-	require.Nil(t, err)
-	id2, err := NewIdentity(dir2, "pass_TestTicketSystem2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
-	require.Nil(t, err)
+	stopTs1 := make(chan bool)
+	ts1 := NewTickets(storage1)
+	go ts1.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
+	stopTs2 := make(chan bool)
+	ts2 := NewTickets(storage2)
+	go ts2.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// Add tickets
 	// Succes ticket before stop
-	addTestTicket(id1, "id1 - Succes ticket before stop", "", `{"SayImDone":true,"Err":""}`, true, true)
-	addTestTicket(id2, "id2 - Succes ticket before stop", "", `{"SayImDone":true,"Err":""}`, true, true)
+	addTestTicket(ts1, "ts1 - Succes ticket before stop", "", `{"SayImDone":true,"Err":""}`, true, true)
+	addTestTicket(ts2, "ts2 - Succes ticket before stop", "", `{"SayImDone":true,"Err":""}`, true, true)
 	// Fail ticket before stop
-	addTestTicket(id1, "id1 - Fail ticket before stop", "Something went wrong", `{}`, true, true)
-	addTestTicket(id2, "id2 - Fail ticket before stop", "Something went wrong", `{}`, true, true)
+	addTestTicket(ts1, "ts1 - Fail ticket before stop", "Something went wrong", `{}`, true, true)
+	addTestTicket(ts2, "ts2 - Fail ticket before stop", "Something went wrong", `{}`, true, true)
 	// Success ticket after stop
-	id1After1 := addTestTicket(id1, "id1 - Succes ticket after stop", "", `{"SayImDone":true,"Err":""}`, false, true)
-	id2After1 := addTestTicket(id2, "id2 - Succes ticket after stop", "", `{"SayImDone":true,"Err":""}`, false, true)
+	id1After1 := addTestTicket(ts1, "ts1 - Succes ticket after stop", "", `{"SayImDone":true,"Err":""}`, false, true)
+	id2After1 := addTestTicket(ts2, "ts2 - Succes ticket after stop", "", `{"SayImDone":true,"Err":""}`, false, true)
 	// Fail ticket after stop
-	id1After2 := addTestTicket(id1, "id1 - Fail ticket after stop", "Something went wrong", `{}`, false, true)
-	id2After2 := addTestTicket(id2, "id2 - Fail ticket after stop", "Something went wrong", `{}`, false, true)
+	id1After2 := addTestTicket(ts1, "ts1 - Fail ticket after stop", "Something went wrong", `{}`, false, true)
+	id2After2 := addTestTicket(ts2, "ts2 - Fail ticket after stop", "Something went wrong", `{}`, false, true)
 	// Add tickets that will be deleted before being solved
-	addTestTicket(id1, "id1 - remove1", "Something went wrong", `{}`, false, false)
-	addTestTicket(id2, "id2 - remove1", "Something went wrong", `{}`, false, false)
-	addTestTicket(id1, "id1 - remove2", "Something went wrong", `{}`, false, false)
-	addTestTicket(id2, "id2 - remove2", "Something went wrong", `{}`, false, false)
-	addTestTicket(id1, "id1 - remove3", "Something went wrong", `{}`, false, false)
-	addTestTicket(id2, "id2 - remove3", "Something went wrong", `{}`, false, false)
+	addTestTicket(ts1, "ts1 - remove1", "Something went wrong", `{}`, false, false)
+	addTestTicket(ts2, "ts2 - remove1", "Something went wrong", `{}`, false, false)
+	addTestTicket(ts1, "ts1 - remove2", "Something went wrong", `{}`, false, false)
+	addTestTicket(ts2, "ts2 - remove2", "Something went wrong", `{}`, false, false)
+	addTestTicket(ts1, "ts1 - remove3", "Something went wrong", `{}`, false, false)
+	addTestTicket(ts2, "ts2 - remove3", "Something went wrong", `{}`, false, false)
 	// Give time to process tickets for the first time.
 	time.Sleep(time.Duration(2 * time.Millisecond))
 	// At this point tickets "Succes ticket before stop" and "Fail ticket before stop" should be resolved
 	// Cancel ticket remove1
-	require.Nil(t, id1.CancelTicket("id1 - remove1"))
+	require.Nil(t, ts1.Cancel("ts1 - remove1"))
 	wgAsyncTest.Done()
-	require.Nil(t, id2.CancelTicket("id2 - remove1"))
+	require.Nil(t, ts2.Cancel("ts2 - remove1"))
 	wgAsyncTest.Done()
-	id1.Stop()
-	id2.Stop()
-	// Load identity
-	id1, err = NewIdentityLoad(dir1, "pass_TestTicketSystem1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
-	require.Nil(t, err)
-	id2, err = NewIdentityLoad(dir2, "pass_TestTicketSystem2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
-	require.Nil(t, err)
+	stopTs1 <- true
+	stopTs2 <- true
+	// Load tickets
+	stopTs1 = make(chan bool)
+	ts1 = NewTickets(storage1)
+	go ts1.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
+	stopTs2 = make(chan bool)
+	ts2 = NewTickets(storage2)
+	go ts2.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// Make after stop tickets finish
 	id1After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
 	id2After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
 	id1After2.handler = &testTicketHandler{SayImDone: true, Err: "Something went wrong"}
 	id2After2.handler = &testTicketHandler{SayImDone: true, Err: "Something went wrong"}
-	require.Nil(t, id1.addTickets([]Ticket{id1After1, id1After2}))
-	require.Nil(t, id2.addTickets([]Ticket{id2After1, id2After2}))
+	require.Nil(t, ts1.Add([]Ticket{id1After1, id1After2}))
+	require.Nil(t, ts2.Add([]Ticket{id2After1, id2After2}))
 	// After loading identity, tickets "Succes ticket after stop" and "Fail ticket after stop" will get resolved
 	// Cancel ticket remove2
-	require.Nil(t, id1.CancelTicket("id1 - remove2"))
+	require.Nil(t, ts1.Cancel("ts1 - remove2"))
 	wgAsyncTest.Done()
 	// Randomize goroutines excution
 	time.Sleep(time.Duration(1 * time.Millisecond))
-	require.Nil(t, id2.CancelTicket("id2 - remove2"))
+	require.Nil(t, ts2.Cancel("ts2 - remove2"))
 	wgAsyncTest.Done()
 	// Randomize goroutines excution
 	time.Sleep(time.Duration(1 * time.Millisecond))
 	// Cancel ticket remove3
-	require.Nil(t, id1.CancelTicket("id1 - remove3"))
+	require.Nil(t, ts1.Cancel("ts1 - remove3"))
 	wgAsyncTest.Done()
-	require.Nil(t, id2.CancelTicket("id2 - remove3"))
+	require.Nil(t, ts2.Cancel("ts2 - remove3"))
 	wgAsyncTest.Done()
 	// Wait for all tickets to produce events
 	wgAsyncTest.Wait()
 	// Compare received events vs expected events
 	require.Equal(t, expectedEvents.Map, receivedEvents.Map)
 	// Check that there are no pending tickets
-	if err := id1.IterateTickets(&forEacher{}); err != nil {
+	if err := ts1.Iterate(&forEacher{}); err != nil {
 		require.Nil(t, err)
 	}
-	if err := id2.IterateTickets(&forEacher{}); err != nil {
+	if err := ts2.Iterate(&forEacher{}); err != nil {
 		require.Nil(t, err)
 	}
 	require.Equal(t, 0, pendingTicketsCounter)
-	id1.Stop()
-	id2.Stop()
+	stopTs1 <- true
+	stopTs2 <- true
 }

@@ -52,12 +52,19 @@ type TicketOperator interface {
 
 const ticketPrefix = "tickets"
 
-func (i *Identity) addTickets(tickets []Ticket) error {
+type Tickets struct {
+	storage db.Storage
+}
+
+func NewTickets(storage db.Storage) *Tickets {
+	return &Tickets{storage: storage}
+}
+
+func (ts *Tickets) Add(tickets []Ticket) error {
 	if len(tickets) == 0 {
 		return errors.New("tickets is empty!")
 	}
-	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
-	tx, err := ticketsDB.NewTx()
+	tx, err := ts.storage.NewTx()
 	if err != nil {
 		return err
 	}
@@ -70,21 +77,21 @@ func (i *Identity) addTickets(tickets []Ticket) error {
 	return tx.Commit()
 }
 
-func (i *Identity) checkPendingTickets(checkPendingTicketsPeriod time.Duration) {
+func (ts *Tickets) CheckPending(id *Identity, eventSender Event, checkPendingPeriod time.Duration, stopCh chan bool) {
 	// TODO: give more control to native host (check now, ...): Impl ctx context, Check out futures @ rust for inspiration.
 	for {
 		// Should stop?
 		select {
-		case <-i.stopTickets:
+		case <-stopCh:
 			log.Info("Stopping check pending tickets routine")
 			return
 		default:
 		}
-		tickets, err := i.getPendingTickets()
+		tickets, err := ts.GetPending()
 		if err != nil {
 			// Should cause panic instead?
 			log.Error("Error loading pending tickets", err)
-			time.Sleep(checkPendingTicketsPeriod)
+			time.Sleep(checkPendingPeriod)
 			continue
 		}
 		var wg sync.WaitGroup
@@ -96,12 +103,12 @@ func (i *Identity) checkPendingTickets(checkPendingTicketsPeriod time.Duration) 
 			wg.Add(1)
 			go func(t Ticket) {
 				defer wg.Done()
-				isDone, data, err := t.handler.isDone(i)
+				isDone, data, err := t.handler.isDone(id)
 				if isDone {
 					// Resolve ticket
 					log.Info("Sending event for ticket: " + t.Id)
 					// TODO: should event sending be serialized? what if it takes too long to come back?
-					i.eventSender.EventHandler(t.Type, t.Id, data, err)
+					eventSender.EventHandler(t.Type, t.Id, data, err)
 					if err != nil {
 						t.Status = TicketStatusDoneError
 					} else {
@@ -128,19 +135,19 @@ func (i *Identity) checkPendingTickets(checkPendingTicketsPeriod time.Duration) 
 		}
 		log.Info("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
 		if len(finishedTickets) > 0 {
-			if err := i.addTickets(finishedTickets); err != nil {
+			if err := ts.Add(finishedTickets); err != nil {
 				log.Error("Error updating tickets that have been resolved. Will check them next iteration.")
 			}
 		}
 		// Should stop?
 		select {
-		case <-i.stopTickets:
+		case <-stopCh:
 			log.Info("Stopping check pending tickets routine")
 			return
 		default:
 		}
 		// Sleep
-		time.Sleep(checkPendingTicketsPeriod)
+		time.Sleep(checkPendingPeriod)
 	}
 }
 
@@ -175,10 +182,10 @@ func (t *Ticket) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (i *Identity) getPendingTickets() ([]*Ticket, error) {
+func (ts *Tickets) GetPending() ([]*Ticket, error) {
 	var tickets []*Ticket
-	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
-	if err := ticketsDB.Iterate(func(key, value []byte) (bool, error) {
+	// ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
+	if err := ts.storage.Iterate(func(key, value []byte) (bool, error) {
 		// load ticket
 		var ticket Ticket
 		if err := ticket.UnmarshalJSON(value); err != nil {
@@ -196,8 +203,8 @@ func (i *Identity) getPendingTickets() ([]*Ticket, error) {
 	return tickets, nil
 }
 
-func (i *Identity) IterateTickets(handler TicketOperator) error {
-	if err := i.storage.WithPrefix([]byte(ticketPrefix)).Iterate(
+func (ts *Tickets) Iterate(handler TicketOperator) error {
+	if err := ts.storage.Iterate(
 		func(key, value []byte) (bool, error) {
 			// load ticket
 			var ticket Ticket
@@ -212,14 +219,13 @@ func (i *Identity) IterateTickets(handler TicketOperator) error {
 	return nil
 }
 
-func (i *Identity) CancelTicket(id string) error {
-	ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
-	ticket := Ticket{}
-	if err := db.LoadJSON(ticketsDB, []byte(id), &ticket); err != nil {
+func (ts *Tickets) Cancel(id string) error {
+	var ticket Ticket
+	if err := db.LoadJSON(ts.storage, []byte(id), &ticket); err != nil {
 		return err
 	}
 	ticket.Status = TicketStatusCancel
-	return i.addTickets([]Ticket{ticket})
+	return ts.Add([]Ticket{ticket})
 }
 
 // TODO: Move this code to test
