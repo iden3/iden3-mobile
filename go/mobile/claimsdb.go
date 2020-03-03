@@ -81,8 +81,14 @@ func (cdb *ClaimDB) Iterate_(fn func([]byte, *proof.CredentialExistence) (bool, 
 	return nil
 }
 
-type ClaimDBIterFner interface {
-	Fn([]byte, *proof.CredentialExistence) (bool, error)
+func (cdb *ClaimDB) IterateBytes(fn func([]byte, []byte) (bool, error)) error {
+	return cdb.Iterate_(func(key []byte, cred *proof.CredentialExistence) (bool, error) {
+		return fn(key, cred.Claim.Bytes())
+	})
 }
 
-func (cdb *ClaimDB) Iterate(iterFn ClaimDBIterFner) error { return cdb.Iterate_(iterFn.Fn) }
+type ClaimDBIterFner interface {
+	Fn([]byte, []byte) (bool, error)
+}
+
+func (cdb *ClaimDB) Iterate(iterFn ClaimDBIterFner) error { return cdb.IterateBytes(iterFn.Fn) }
