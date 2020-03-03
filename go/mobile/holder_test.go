@@ -58,7 +58,7 @@ func holderEventHandler(ev *Event) {
 	// Evaluate event
 	switch ev.Type {
 	case "RequestClaimStatus":
-		d := &reqClaimStatusEvent{}
+		d := &resClaimStatusHandler{}
 		if err := json.Unmarshal([]byte(ev.Data), d); err != nil {
 			panic(err)
 		}
