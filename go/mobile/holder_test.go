@@ -11,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type holderTestEvent struct{}
-
 type callback struct{}
 type counter struct {
 	sync.Mutex
@@ -25,7 +23,7 @@ func (c *callback) VerifierResHandler(success bool, err error) {
 	defer verificationCounter.Unlock()
 	log.Info("--- TEST LOG: Callback VerifierResHandler. Successs: ", success, ". Error: ", err)
 	if !success || err != nil {
-		return
+		panic(err)
 	}
 	verificationCounter.n++
 }
@@ -43,25 +41,25 @@ func (c *callback) RequestClaimResHandler(ticket *Ticket, err error) {
 	}
 }
 
-func (e *holderTestEvent) EventHandler(typ string, id, data string, err error) {
-	defer wgHolderTest.Done()
-	if err != nil {
-		panic("Test event received with error: " + err.Error())
+func holderEventHandler(ev *Event) {
+	// defer wgHolderTest.Done()
+	if ev.Err != nil {
+		panic("Test event received with error: " + ev.Err.Error())
 	}
-	log.Info("--- TEST LOG: Test event received. Type: ", typ, ". Id: ", id, ". Data: ", data)
+	log.Info("--- TEST LOG: Test event received. Type: ", ev.Type, ". Id: ", ev.TicketId, ". Data: ", ev.Data)
 	// Check if the event was expected
 	expectedEvents.Lock()
 	defer expectedEvents.Unlock()
-	if ev, ok := expectedEvents.Map[id]; !ok || ev.Typ != typ {
+	if evn, ok := expectedEvents.Map[ev.TicketId]; !ok || evn.Typ != ev.Type {
 		panic("Unexpected event")
 	} else {
-		delete(expectedEvents.Map, id)
+		delete(expectedEvents.Map, ev.TicketId)
 	}
 	// Evaluate event
-	switch typ {
+	switch ev.Type {
 	case "RequestClaimStatus":
 		d := &reqClaimStatusEvent{}
-		if err := json.Unmarshal([]byte(data), d); err != nil {
+		if err := json.Unmarshal([]byte(ev.Data), d); err != nil {
 			panic(err)
 		}
 		// Check received data
@@ -73,10 +71,10 @@ func (e *holderTestEvent) EventHandler(typ string, id, data string, err error) {
 			Typ: d.CredentialTicket.Type,
 		}
 		// Wait for "RequestClaimCredential" event
-		wgHolderTest.Add(1)
+		// wgHolderTest.Add(1)
 		return
 	case "RequestClaimCredential":
-		if data != `{"success":true}` {
+		if ev.Data != `{"success":true}` {
 			panic("Validity credential not received")
 		}
 		return
@@ -101,10 +99,9 @@ func TestHolder(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
-	eventHandler := &holderTestEvent{}
-	id1, err := NewIdentity(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
+	id1, err := NewIdentity(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
 	require.Nil(t, err)
-	id2, err := NewIdentity(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), eventHandler)
+	id2, err := NewIdentity(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
 	require.Nil(t, err)
 	// Request claim
 	cllbck := &callback{}
@@ -116,20 +113,24 @@ func TestHolder(t *testing.T) {
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
-	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
-	wgHolderTest.Wait()
+	holderEventHandler(id1.GetNextEvent()) // Wait until the issuer response produce event (claim aproved)
+	holderEventHandler(id2.GetNextEvent()) // Wait until the issuer response produce event (claim aproved)
+	holderEventHandler(id1.GetNextEvent()) // Wait until the issuer response produce event (claim issued)
+	holderEventHandler(id2.GetNextEvent()) // Wait until the issuer response produce event (claim issued)
+	// wgHolderTest.Wait()
 	log.Info("--- TEST LOG: Claims received!")
 	// If events don't cause panic everything went as expected. Check that identities have one claim.
 	// Do it after reload identities to test claim persistance
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
-	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, eventHandler)
+	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
 	_, err = id1.GetReceivedClaim(0)
 	require.Nil(t, err)

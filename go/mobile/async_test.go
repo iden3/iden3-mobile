@@ -12,22 +12,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type asyncTestEvent struct{}
-
-func (e *asyncTestEvent) EventHandler(typ string, id, data string, err error) {
-	defer wgAsyncTest.Done()
-	log.Info("Test event received. Id: ", id)
-	_err := ""
-	if err != nil {
-		_err = err.Error()
-	}
-	receivedEvents.Lock()
-	defer receivedEvents.Unlock()
-	receivedEvents.Map[id] = event{
-		Typ:  typ,
-		Id:   id,
-		Data: data,
-		Err:  _err,
+func eventHandler(eventCh chan Event, stopCh chan bool) {
+	for {
+		select {
+		case <-stopCh:
+			log.Info("Stopping check events routine")
+			return
+		case ev := <-eventCh:
+			log.Info("Test event received. Id: ", ev.TicketId)
+			_err := ""
+			if ev.Err != nil {
+				_err = ev.Err.Error()
+			}
+			receivedEvents.Lock()
+			receivedEvents.Map[ev.TicketId] = event{
+				Typ:  ev.Type,
+				Id:   ev.TicketId,
+				Data: ev.Data,
+				Err:  _err,
+			}
+			receivedEvents.Unlock()
+			wgAsyncTest.Done()
+		}
 	}
 }
 
@@ -107,14 +113,18 @@ func TestTicketSystem(t *testing.T) {
 	require.Nil(t, err)
 	storage2, err := db.NewLevelDbStorage(dir2, false)
 	require.Nil(t, err)
-
-	eventHandler := &asyncTestEvent{}
+	eventCh1 := make(chan Event)
 	stopTs1 := make(chan bool)
+	stopEv1 := make(chan bool)
 	ts1 := NewTickets(storage1)
-	go ts1.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
+	go eventHandler(eventCh1, stopEv1)
+	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
 	stopTs2 := make(chan bool)
+	stopEv2 := make(chan bool)
+	eventCh2 := make(chan Event)
 	ts2 := NewTickets(storage2)
-	go ts2.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
+	go eventHandler(eventCh2, stopEv2)
+	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// Add tickets
 	// Succes ticket before stop
 	addTestTicket(ts1, "ts1 - Succes ticket before stop", "", `{"SayImDone":true,"Err":""}`, true, true)
@@ -145,13 +155,19 @@ func TestTicketSystem(t *testing.T) {
 	wgAsyncTest.Done()
 	stopTs1 <- true
 	stopTs2 <- true
+	// stopEv1 <- true
+	// stopEv2 <- true
 	// Load tickets
 	stopTs1 = make(chan bool)
+	// stopEv1 = make(chan bool)
 	ts1 = NewTickets(storage1)
-	go ts1.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
+	// go eventHandler(eventCh1, stopEv1)
+	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
 	stopTs2 = make(chan bool)
+	// stopEv2 = make(chan bool)
 	ts2 = NewTickets(storage2)
-	go ts2.CheckPending(nil, eventHandler, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
+	// go eventHandler(eventCh2, stopEv2)
+	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// Make after stop tickets finish
 	id1After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
 	id2After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
@@ -188,4 +204,6 @@ func TestTicketSystem(t *testing.T) {
 	require.Equal(t, 0, pendingTicketsCounter)
 	stopTs1 <- true
 	stopTs2 <- true
+	stopEv1 <- true
+	stopEv2 <- true
 }

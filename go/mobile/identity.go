@@ -20,12 +20,11 @@ import (
 )
 
 type Identity struct {
-	id *holder.Holder
-	// Tickets     *TicketsMap
-	eventSender Event
+	id          *holder.Holder
 	storage     db.Storage
 	tickets     *Tickets
 	stopTickets chan bool
+	eventQueue  chan Event
 }
 
 const (
@@ -39,7 +38,7 @@ const (
 // this funciton is mapped as a constructor in Java.
 // NOTE: The storePath must be unique per Identity.
 // NOTE: Right now the extraGenesisClaims is useless.
-func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, e Event) (*Identity, error) {
+func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
 	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
 	if err != nil {
 		return nil, err
@@ -103,12 +102,12 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	keyStore.Close()
 	storage.Close()
 	resourcesAreClosed = true
-	return NewIdentityLoad(storePath, pass, web3Url, checkTicketsPeriodMilis, e)
+	return NewIdentityLoad(storePath, pass, web3Url, checkTicketsPeriodMilis)
 }
 
 // NewIdentityLoad loads an already created identity
 // this funciton is mapped as a constructor in Java
-func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e Event) (*Identity, error) {
+func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int) (*Identity, error) {
 	// TODO: figure out how to diferentiate the two constructors from Java: https://github.com/iden3/iden3-mobile/issues/17#issuecomment-587374644
 	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
 	if err != nil {
@@ -131,13 +130,21 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	// Init Identity
 	iden := &Identity{
 		id:          holdr,
-		eventSender: e,
 		storage:     storage,
 		tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
+		stopTickets: make(chan bool),
+		eventQueue:  make(chan Event, 10),
 	}
-	iden.stopTickets = make(chan bool)
-	go iden.tickets.CheckPending(iden, iden.eventSender, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
+	go iden.tickets.CheckPending(iden, iden.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
+}
+
+// GetNextEvent returns the oldest event that has been generated.
+// Note that each event can only be retireved once.
+// Note that this function is blocking and potentially for a very long time.
+func (i *Identity) GetNextEvent() *Event {
+	ev := <-i.eventQueue
+	return &ev
 }
 
 // Stop close all the open resources of the Identity

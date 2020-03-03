@@ -10,9 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Event interface {
-	EventHandler(string, string, string, error) // Type, Ticket ID, Data(json), error
-	// EventHandler(TicketType, string, string, error) // Type, Ticket ID, Data(json), error
+type Event struct {
+	Type     string
+	TicketId string
+	Data     string
+	Err      error
 }
 
 type Callback interface {
@@ -77,7 +79,7 @@ func (ts *Tickets) Add(tickets []Ticket) error {
 	return tx.Commit()
 }
 
-func (ts *Tickets) CheckPending(id *Identity, eventSender Event, checkPendingPeriod time.Duration, stopCh chan bool) {
+func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPeriod time.Duration, stopCh chan bool) {
 	// TODO: give more control to native host (check now, ...): Impl ctx context, Check out futures @ rust for inspiration.
 	for {
 		// Should stop?
@@ -97,6 +99,7 @@ func (ts *Tickets) CheckPending(id *Identity, eventSender Event, checkPendingPer
 		var wg sync.WaitGroup
 		nPendingTickets := len(tickets)
 		finished := make(chan Ticket, nPendingTickets)
+		events := make(chan Event, nPendingTickets)
 		log.Info("Checking ", nPendingTickets, " pending tickets")
 		for _, ticket := range tickets {
 			// Check ticket
@@ -107,8 +110,12 @@ func (ts *Tickets) CheckPending(id *Identity, eventSender Event, checkPendingPer
 				if isDone {
 					// Resolve ticket
 					log.Info("Sending event for ticket: " + t.Id)
-					// TODO: should event sending be serialized? what if it takes too long to come back?
-					eventSender.EventHandler(t.Type, t.Id, data, err)
+					events <- Event{
+						Type:     t.Type,
+						TicketId: t.Id,
+						Data:     data,
+						Err:      err,
+					}
 					if err != nil {
 						t.Status = TicketStatusDoneError
 					} else {
@@ -138,6 +145,10 @@ func (ts *Tickets) CheckPending(id *Identity, eventSender Event, checkPendingPer
 			if err := ts.Add(finishedTickets); err != nil {
 				log.Error("Error updating tickets that have been resolved. Will check them next iteration.")
 			}
+		}
+		close(events)
+		for ev := range events {
+			eventCh <- ev
 		}
 		// Should stop?
 		select {

@@ -45,12 +45,12 @@ func TestNewIdentity(t *testing.T) {
 	dir1, err := ioutil.TempDir("", "identityTest")
 	rmDirs = append(rmDirs, dir1)
 	require.Nil(t, err)
-	id, err := NewIdentity(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id, err := NewIdentity(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
 	// Load identity
-	id, err = NewIdentityLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, nil)
+	id, err = NewIdentityLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
