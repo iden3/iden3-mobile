@@ -83,17 +83,6 @@ func addTestTicket(ts *Tickets, ticketId, err, expectedData string, sayImDone, a
 	return ticket
 }
 
-type forEacher struct{}
-
-var pendingTicketsCounter = 0
-
-func (fe *forEacher) Iterate(t *Ticket) (bool, error) {
-	if t.Status == TicketStatusPending {
-		pendingTicketsCounter++
-	}
-	return true, nil
-}
-
 func TestTicketSystem(t *testing.T) {
 	expectedEvents = eventsMap{
 		Map: make(map[string]event),
@@ -195,10 +184,17 @@ func TestTicketSystem(t *testing.T) {
 	// Compare received events vs expected events
 	require.Equal(t, expectedEvents.Map, receivedEvents.Map)
 	// Check that there are no pending tickets
-	if err := ts1.Iterate(&forEacher{}); err != nil {
+	pendingTicketsCounter := 0
+	iterFn := func(t *Ticket) (bool, error) {
+		if t.Status == TicketStatusPending {
+			pendingTicketsCounter++
+		}
+		return true, nil
+	}
+	if err := ts1.Iterate_(iterFn); err != nil {
 		require.Nil(t, err)
 	}
-	if err := ts2.Iterate(&forEacher{}); err != nil {
+	if err := ts2.Iterate_(iterFn); err != nil {
 		require.Nil(t, err)
 	}
 	require.Equal(t, 0, pendingTicketsCounter)

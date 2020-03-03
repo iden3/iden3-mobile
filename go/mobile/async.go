@@ -48,10 +48,6 @@ type Ticket struct {
 	HandlerJSON json.RawMessage
 }
 
-type TicketOperator interface {
-	Iterate(*Ticket) (bool, error)
-}
-
 const ticketPrefix = "tickets"
 
 type Tickets struct {
@@ -100,7 +96,7 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 		nPendingTickets := len(tickets)
 		finished := make(chan Ticket, nPendingTickets)
 		events := make(chan Event, nPendingTickets)
-		log.Info("Checking ", nPendingTickets, " pending tickets")
+		log.Debug("Checking ", nPendingTickets, " pending tickets")
 		for _, ticket := range tickets {
 			// Check ticket
 			wg.Add(1)
@@ -140,7 +136,7 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 			finishedTickets = append(finishedTickets, ticket)
 			nResolvedTickets++
 		}
-		log.Info("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
+		log.Debug("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
 		if len(finishedTickets) > 0 {
 			if err := ts.Add(finishedTickets); err != nil {
 				log.Error("Error updating tickets that have been resolved. Will check them next iteration.")
@@ -214,7 +210,7 @@ func (ts *Tickets) GetPending() ([]*Ticket, error) {
 	return tickets, nil
 }
 
-func (ts *Tickets) Iterate(handler TicketOperator) error {
+func (ts *Tickets) Iterate_(fn func(*Ticket) (bool, error)) error {
 	if err := ts.storage.Iterate(
 		func(key, value []byte) (bool, error) {
 			// load ticket
@@ -222,13 +218,19 @@ func (ts *Tickets) Iterate(handler TicketOperator) error {
 			if err := ticket.UnmarshalJSON(value); err != nil {
 				return false, err
 			}
-			return handler.Iterate(&ticket)
+			return fn(&ticket)
 		},
 	); err != nil {
 		return err
 	}
 	return nil
 }
+
+type TicketOperator interface {
+	Iterate(*Ticket) (bool, error)
+}
+
+func (ts *Tickets) Iterate(handler TicketOperator) error { return ts.Iterate_(handler.Iterate) }
 
 func (ts *Tickets) Cancel(id string) error {
 	var ticket Ticket

@@ -1,8 +1,11 @@
 package iden3mobile
 
 import (
-	"strconv"
+	"crypto/sha256"
+	"fmt"
+	"sync"
 
+	"github.com/iden3/go-iden3-core/common"
 	"github.com/iden3/go-iden3-core/core/proof"
 	"github.com/iden3/go-iden3-core/db"
 	log "github.com/sirupsen/logrus"
@@ -10,58 +13,43 @@ import (
 
 const (
 	credExisPrefix = "credExis"
-	credCounterKey = "credCounter"
 )
 
-func (i *Identity) addCredentialExistance(cred proof.CredentialExistence) error {
-	// TODO: make it thread safe
-	// TODO: USe hash of (id + claim) as key
-	credDB := i.storage.WithPrefix([]byte(credExisPrefix))
-	tx, err := credDB.NewTx()
-	if err != nil {
-		return err
-	}
-	counterStr, err := tx.Get([]byte(credCounterKey))
-	if err != nil {
-		return err
-	}
-	counter, err := strconv.Atoi(string(counterStr))
-	if err != nil {
-		return err
-	}
-	if err := db.StoreJSON(tx, []byte(strconv.Itoa(counter)), cred); err != nil {
-		return err
-	}
-	counter++
-	tx.Put([]byte(credCounterKey), []byte(strconv.Itoa(counter)))
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	log.Info("Stored new existence credential, with key = ", strconv.Itoa(counter-1))
-	return nil
+type ClaimDB struct {
+	storage db.Storage
+	m       sync.Mutex
 }
 
-// GetReceivedClaimsLen return the amount of received claims by the identity
-func (i *Identity) GetReceivedClaimsLen() (int, error) {
-	credDB := i.storage.WithPrefix([]byte(credExisPrefix))
-	tx, err := credDB.NewTx()
+func NewClaimDB(storage db.Storage) *ClaimDB {
+	return &ClaimDB{storage: storage}
+}
+
+// AddCredentialExistance adds a credential existence to the ClaimDB and
+// returns the id of the entry in the DB.
+func (cdb *ClaimDB) AddCredentialExistance(cred *proof.CredentialExistence) ([]byte, error) {
+	cdb.m.Lock()
+	defer cdb.m.Unlock()
+	tx, err := cdb.storage.NewTx()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	counterStr, err := tx.Get([]byte(credCounterKey))
-	if err != nil {
-		return 0, err
+	id := sha256.Sum256(append(cred.Id[:], cred.Claim.Bytes()...))
+	if _, err := tx.Get(id[:]); err == nil {
+		return nil, fmt.Errorf("Credentail already exsits in the ClaimDB")
 	}
-	counter, err := strconv.Atoi(string(counterStr))
-	if err != nil {
-		return 0, err
+	if err := db.StoreJSON(tx, id[:], cred); err != nil {
+		return nil, err
 	}
-	return counter, nil
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	log.WithField("key", common.Hex(id[:])).Info("Stored new existence credential")
+	return id[:], nil
 }
 
 // GetReceivedClaim returns the requested claim
-func (i *Identity) GetReceivedClaim(pos int) ([]byte, error) {
-	cred, err := i.getReceivedCredential(pos)
+func (cdb *ClaimDB) GetReceivedClaim(id []byte) ([]byte, error) {
+	cred, err := cdb.GetReceivedCredential(id)
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +57,32 @@ func (i *Identity) GetReceivedClaim(pos int) ([]byte, error) {
 	return cred.Claim.Bytes(), nil
 }
 
-func (i *Identity) getReceivedCredential(pos int) (proof.CredentialExistence, error) {
+func (cdb *ClaimDB) GetReceivedCredential(id []byte) (*proof.CredentialExistence, error) {
+	log.WithField("key", common.Hex(id)).Info("Loading existence credential")
 	var cred proof.CredentialExistence
-	log.Info("Loading existence credential, with key = ", strconv.Itoa(pos))
-	credDB := i.storage.WithPrefix([]byte(credExisPrefix))
-	if err := db.LoadJSON(credDB, []byte(strconv.Itoa(pos)), &cred); err != nil {
-		return cred, err
+	if err := db.LoadJSON(cdb.storage, id, &cred); err != nil {
+		return nil, err
 	}
-	return cred, nil
+	return &cred, nil
 }
+
+func (cdb *ClaimDB) Iterate_(fn func([]byte, *proof.CredentialExistence) (bool, error)) error {
+	if err := cdb.storage.Iterate(
+		func(key, value []byte) (bool, error) {
+			var cred proof.CredentialExistence
+			if err := db.LoadJSON(cdb.storage, key, &cred); err != nil {
+				return false, err
+			}
+			return fn(key, &cred)
+		},
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+type ClaimDBIterFner interface {
+	Fn([]byte, *proof.CredentialExistence) (bool, error)
+}
+
+func (cdb *ClaimDB) Iterate(iterFn ClaimDBIterFner) error { return cdb.Iterate_(iterFn.Fn) }
