@@ -60,7 +60,7 @@ func (e *holderTestEvent) EventHandler(typ string, id, data string, err error) {
 	// Evaluate event
 	switch typ {
 	case "RequestClaimStatus":
-		d := &reqClaimStatusEvent{}
+		d := &resClaimStatusHandler{}
 		if err := json.Unmarshal([]byte(data), d); err != nil {
 			panic(err)
 		}

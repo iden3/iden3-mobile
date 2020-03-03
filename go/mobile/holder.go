@@ -18,9 +18,10 @@ type reqClaimStatusHandler struct {
 	BaseUrl string
 }
 
-type reqClaimStatusEvent struct {
+type resClaimStatusHandler struct {
 	Claim            *merkletree.Entry
 	CredentialTicket *Ticket
+	Status           string
 }
 
 type reqClaimCredentialHandler struct {
@@ -74,7 +75,12 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 	case issuerMsg.RequestStatusPending:
 		return false, "", nil
 	case issuerMsg.RequestStatusRejected:
-		j, err := json.Marshal(res)
+		event := resClaimStatusHandler{
+			Claim:            res.Claim,
+			CredentialTicket: nil,
+			Status:           string(res.Status),
+		}
+		j, err := json.Marshal(event)
 		if err != nil {
 			return true, "{}", err
 		}
@@ -95,9 +101,10 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 			return true, "{}", err
 		}
 		// Send event with received claim and credential request ticket
-		event := reqClaimStatusEvent{
+		event := resClaimStatusHandler{
 			Claim:            res.Claim,
 			CredentialTicket: ticket,
+			Status:           string(res.Status),
 		}
 		j, err := json.Marshal(event)
 		if err != nil {
