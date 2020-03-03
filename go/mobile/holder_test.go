@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iden3/go-iden3-core/core/proof"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -126,21 +127,40 @@ func TestHolder(t *testing.T) {
 	log.Info("--- TEST LOG: Claims received!")
 	// If events don't cause panic everything went as expected. Check that identities have one claim.
 	// Do it after reload identities to test claim persistance
+	err = id1.ClaimDB.Iterate_(func(id []byte, cred *proof.CredentialExistence) (bool, error) {
+		return false, nil
+	})
+	require.Nil(t, err)
 	id1.Stop()
 	id2.Stop()
 	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
 	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
-	_, err = id1.GetReceivedClaim(0)
+
+	var id1ClaimID [32]byte
+	err = id1.ClaimDB.Iterate_(func(id []byte, cred *proof.CredentialExistence) (bool, error) {
+		copy(id1ClaimID[:], id)
+		return false, nil
+	})
 	require.Nil(t, err)
-	_, err = id2.GetReceivedClaim(0)
+	require.NotEqual(t, [32]byte{}, id1ClaimID)
+	_, err = id1.ClaimDB.GetReceivedClaim(id1ClaimID[:])
+	require.Nil(t, err)
+	var id2ClaimID [32]byte
+	err = id2.ClaimDB.Iterate_(func(id []byte, cred *proof.CredentialExistence) (bool, error) {
+		copy(id2ClaimID[:], id)
+		return false, nil
+	})
+	require.Nil(t, err)
+	require.NotEqual(t, [32]byte{}, id2ClaimID)
+	_, err = id2.ClaimDB.GetReceivedClaim(id2ClaimID[:])
 	require.Nil(t, err)
 	// Prove claim
 	for i := 0; i < c.VerifierAttempts; i++ {
 		wgCallbackTest.Add(2)
-		id1.ProveClaim(c.VerifierUrl, 0, cllbck)
-		id2.ProveClaim(c.VerifierUrl, 0, cllbck)
+		id1.ProveClaim(c.VerifierUrl, id1ClaimID[:], cllbck)
+		id2.ProveClaim(c.VerifierUrl, id2ClaimID[:], cllbck)
 		wgCallbackTest.Wait()
 		if verificationCounter.n == 2 {
 			break

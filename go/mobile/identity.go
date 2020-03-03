@@ -23,6 +23,7 @@ type Identity struct {
 	id          *holder.Holder
 	storage     db.Storage
 	tickets     *Tickets
+	ClaimDB     *ClaimDB
 	stopTickets chan bool
 	eventQueue  chan Event
 }
@@ -89,15 +90,7 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 		return nil, err
 	}
 	// Init claim DB
-	credDB := storage.WithPrefix([]byte(credExisPrefix))
-	tx, err = credDB.NewTx()
-	if err != nil {
-		return nil, err
-	}
-	tx.Put([]byte(credCounterKey), []byte("0"))
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
+	// cdb := NewClaimDB(storage.WithPrefix([]byte(credExisPrefix)))
 	// Verify that the Identity can be loaded successfully
 	keyStore.Close()
 	storage.Close()
@@ -134,6 +127,7 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 		tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
 		stopTickets: make(chan bool),
 		eventQueue:  make(chan Event, 10),
+		ClaimDB:     NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
 	go iden.tickets.CheckPending(iden, iden.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil

@@ -138,7 +138,7 @@ func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
 			return true, "", err
 		}
 		// Add credential to the identity
-		if err := id.addCredentialExistance(*res.Credential); err != nil {
+		if _, err := id.ClaimDB.AddCredentialExistance(res.Credential); err != nil {
 			log.Error("Error storing credential existance", err)
 			return true, "", err
 		}
@@ -151,17 +151,17 @@ func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
 
 // ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier
 // the callback is used to check if the verifier has accepted the credential as valid
-func (i *Identity) ProveClaim(baseUrl string, credIndex int, c Callback) {
+func (i *Identity) ProveClaim(baseUrl string, credId []byte, c Callback) {
 	// TODO: add context
 	go func() {
 		// Get credential existance
-		credExis, err := i.getReceivedCredential(credIndex)
+		credExis, err := i.ClaimDB.GetReceivedCredential(credId)
 		if err != nil {
 			c.VerifierResHandler(false, err)
 			return
 		}
 		// Build credential validity
-		credVal, err := i.id.HolderGetCredentialValidity(&credExis)
+		credVal, err := i.id.HolderGetCredentialValidity(credExis)
 		if err != nil {
 			c.VerifierResHandler(false, err)
 			return
