@@ -1,7 +1,10 @@
 package iden3mobile
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -22,8 +25,8 @@ import (
 type Identity struct {
 	id          *holder.Holder
 	storage     db.Storage
-	tickets     *Tickets
 	ClaimDB     *ClaimDB
+	Tickets     *Tickets
 	stopTickets chan bool
 	eventQueue  chan Event
 }
@@ -40,6 +43,13 @@ const (
 // NOTE: The storePath must be unique per Identity.
 // NOTE: Right now the extraGenesisClaims is useless.
 func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
+	// Check that storePath points to an empty dir
+	if dirIsEmpty, err := isEmpty(storePath); !dirIsEmpty || err != nil {
+		if err == nil {
+			err = errors.New("Directory is not empty")
+		}
+		return nil, err
+	}
 	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
 	if err != nil {
 		return nil, err
@@ -124,12 +134,12 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	iden := &Identity{
 		id:          holdr,
 		storage:     storage,
-		tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
+		Tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
 		stopTickets: make(chan bool),
 		eventQueue:  make(chan Event, 10),
 		ClaimDB:     NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
-	go iden.tickets.CheckPending(iden, iden.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
+	go iden.Tickets.CheckPending(iden, iden.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
 }
 
@@ -214,4 +224,18 @@ func loadIdenPubOnChain(web3Url string) (idenpubonchain.IdenPubOnChainer, error)
 		IdenStates: common.HexToAddress(smartContractAddress), // TODO: hardcode the address
 	}
 	return idenpubonchain.New(client, addresses), nil
+}
+
+func isEmpty(path string) (bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	_, err = f.Readdirnames(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }

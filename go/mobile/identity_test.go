@@ -49,6 +49,9 @@ func TestNewIdentity(t *testing.T) {
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
+	// Error when creating new identity on a non empty dir
+	_, err = NewIdentity(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	require.Error(t, err)
 	// Load identity
 	id, err = NewIdentityLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
