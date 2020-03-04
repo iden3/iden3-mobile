@@ -8,7 +8,7 @@ helper-scripts/
 go/mockupServer/main/main
 ####### gomobile
 go/mobile/config.yml
-go/mobile/iden3-mobile-sources.jar
+go/mobile/iden3mobile-sources.jar
 go/mobile/iden3mobile
 # uncompressed jar
 go/mobile/go
@@ -120,7 +120,7 @@ unlinked_spec.ds
 # Built application files
 *.apk
 *.aar
-# !flutter/android/app/src/main/libs/iden3-mobile.aar
+# !flutter/android/app/src/main/libs/iden3mobile.aar
 *.ap_
 *.aab
 
