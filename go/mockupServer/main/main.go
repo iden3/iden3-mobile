@@ -26,6 +26,11 @@ type counter struct {
 	n int
 }
 
+type pendingClaimsMap struct {
+	sync.Mutex
+	Map map[int]time.Time
+}
+
 var c = conf{}
 var claimCounter = counter{n: 0}
 
@@ -36,7 +41,7 @@ func main() {
 		panic("IP flag is mandatory")
 	}
 	claimRes, credRes, pubDataRes := getMockup()
-	pendingClaims := make(map[int]time.Time)
+	pendingClaims := &pendingClaimsMap{Map: make(map[int]time.Time)}
 	// ISSUER ENDPOINTS
 
 	// /claim/request
@@ -53,7 +58,9 @@ func main() {
 		}); err != nil {
 			log.Error("Error sending /claim/request response: " + err.Error())
 		}
-		pendingClaims[tracker] = time.Now()
+		pendingClaims.Lock()
+		pendingClaims.Map[tracker] = time.Now()
+		pendingClaims.Unlock()
 	})
 
 	// /claim/status/
@@ -66,7 +73,9 @@ func main() {
 			log.Error("/claim/status/:id id is not int")
 			return
 		}
-		t, ok := pendingClaims[tracker]
+		pendingClaims.Lock()
+		t, ok := pendingClaims.Map[tracker]
+		pendingClaims.Unlock()
 		if !ok {
 			w.WriteHeader(404)
 			log.Error("/claim/status/:id NOT FOUND")
@@ -86,7 +95,9 @@ func main() {
 			if _, err := w.Write([]byte(claimRes)); err != nil {
 				log.Error("Error sending /claim/status/:id response: " + err.Error())
 			} else {
-				delete(pendingClaims, tracker)
+				pendingClaims.Lock()
+				delete(pendingClaims.Map, tracker)
+				pendingClaims.Unlock()
 				log.Info("claim status: SENDED")
 			}
 		}
