@@ -9,14 +9,10 @@ import (
 	"github.com/iden3/go-iden3-core/components/httpclient"
 	"github.com/iden3/go-iden3-core/merkletree"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
-	verifierMsg "github.com/iden3/go-iden3-servers-demo/servers/verifier/messages"
 	log "github.com/sirupsen/logrus"
 )
 
-type reqClaimStatusHandler struct {
-	Id      int
-	BaseUrl string
-}
+// TODO: async wrappers (with and without callback)
 
 type resClaimStatusHandler struct {
 	Claim            *merkletree.Entry
@@ -24,40 +20,9 @@ type resClaimStatusHandler struct {
 	Status           string
 }
 
-type reqClaimCredentialHandler struct {
-	Claim   *merkletree.Entry
+type reqClaimStatusHandler struct {
+	Id      int
 	BaseUrl string
-}
-
-// TODO: async wrappers (with and without callback)
-
-// RequestClaim sends a petition to issue a claim to an issuer.
-// This function will eventually trigger an event,
-// the returned ticket can be used to reference the event
-func (i *Identity) RequestClaim(baseUrl, data string, c Callback) {
-	go func() {
-		id := uuid.New().String()
-		t := &Ticket{
-			Id:     id,
-			Type:   TicketTypeClaimStatus,
-			Status: TicketStatusPending,
-		}
-		httpClient := httpclient.NewHttpClient(baseUrl)
-		res := issuerMsg.ResClaimRequest{}
-		if err := httpClient.DoRequest(httpClient.NewRequest().Path(
-			"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
-			Value: data,
-		}), &res); err != nil {
-			c.RequestClaimResHandler(nil, err)
-			return
-		}
-		t.handler = &reqClaimStatusHandler{
-			Id:      res.Id,
-			BaseUrl: baseUrl,
-		}
-		err := i.Tickets.Add([]Ticket{*t})
-		c.RequestClaimResHandler(t, err)
-	}()
 }
 
 //
@@ -116,6 +81,11 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 	}
 }
 
+type reqClaimCredentialHandler struct {
+	Claim   *merkletree.Entry
+	BaseUrl string
+}
+
 func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
 	httpClient := httpclient.NewHttpClient(h.BaseUrl)
 	res := issuerMsg.ResClaimCredential{}
@@ -143,40 +113,9 @@ func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
 			return true, "", err
 		}
 		// Send event with success
+		// TODO: return db key
 		return true, `{"success":true}`, nil
 	default:
 		return true, "{}", errors.New("Unexpected response from issuer")
 	}
-}
-
-// ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier
-// the callback is used to check if the verifier has accepted the credential as valid
-func (i *Identity) ProveClaim(baseUrl string, credId []byte, c Callback) {
-	// TODO: add context
-	go func() {
-		// Get credential existance
-		credExis, err := i.ClaimDB.GetReceivedCredential(credId)
-		if err != nil {
-			c.VerifierResHandler(false, err)
-			return
-		}
-		// Build credential validity
-		credVal, err := i.id.HolderGetCredentialValidity(credExis)
-		if err != nil {
-			c.VerifierResHandler(false, err)
-			return
-		}
-		// Send credential to verifier
-		httpClient := httpclient.NewHttpClient(baseUrl)
-		if err := httpClient.DoRequest(httpClient.NewRequest().Path(
-			"verify").Post("").BodyJSON(verifierMsg.ReqVerify{
-			CredentialValidity: credVal,
-		}), nil); err != nil {
-			// Credential declined / error
-			c.VerifierResHandler(false, err)
-			return
-		}
-		// Success
-		c.VerifierResHandler(true, nil)
-	}()
 }

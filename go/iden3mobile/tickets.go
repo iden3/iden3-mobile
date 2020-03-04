@@ -17,11 +17,6 @@ type Event struct {
 	Err      error
 }
 
-type Callback interface {
-	VerifierResHandler(bool, error)
-	RequestClaimResHandler(*Ticket, error)
-}
-
 type ticketInterface interface {
 	isDone(*Identity) (bool, string, error)
 }
