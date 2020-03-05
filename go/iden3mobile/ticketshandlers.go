@@ -35,7 +35,6 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 		fmt.Sprintf("claim/status/%v", h.Id)).Get(""), &res); err != nil {
 		return true, "{}", err
 	}
-	// TODO: returned "json" should be equal in all cases
 	switch res.Status {
 	case issuerMsg.RequestStatusPending:
 		return false, "", nil
