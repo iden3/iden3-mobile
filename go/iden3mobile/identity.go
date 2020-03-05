@@ -18,11 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type Callback interface {
-	VerifierResHandler(bool, error)
-	RequestClaimResHandler(*Ticket, error)
-}
-
 type Identity struct {
 	id          *holder.Holder
 	storage     db.Storage
@@ -177,60 +172,68 @@ func (i *Identity) Stop() {
 // RequestClaim sends a petition to issue a claim to an issuer.
 // This function will eventually trigger an event,
 // the returned ticket can be used to reference the event
-func (i *Identity) RequestClaim(baseUrl, data string, c Callback) {
-	go func() {
-		id := uuid.New().String()
-		t := &Ticket{
-			Id:     id,
-			Type:   TicketTypeClaimStatus,
-			Status: TicketStatusPending,
-		}
-		httpClient := httpclient.NewHttpClient(baseUrl)
-		res := issuerMsg.ResClaimRequest{}
-		if err := httpClient.DoRequest(httpClient.NewRequest().Path(
-			"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
-			Value: data,
-		}), &res); err != nil {
-			c.RequestClaimResHandler(nil, err)
-			return
-		}
-		t.handler = &reqClaimStatusHandler{
-			Id:      res.Id,
-			BaseUrl: baseUrl,
-		}
-		err := i.Tickets.Add([]Ticket{*t})
-		c.RequestClaimResHandler(t, err)
-	}()
+func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
+	id := uuid.New().String()
+	t := &Ticket{
+		Id:     id,
+		Type:   TicketTypeClaimStatus,
+		Status: TicketStatusPending,
+	}
+	httpClient := httpclient.NewHttpClient(baseUrl)
+	res := issuerMsg.ResClaimRequest{}
+	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
+		"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
+		Value: data,
+	}), &res); err != nil {
+		return nil, err
+	}
+	t.handler = &reqClaimStatusHandler{
+		Id:      res.Id,
+		BaseUrl: baseUrl,
+	}
+	err := i.Tickets.Add([]Ticket{*t})
+	return t, err
+}
+
+type CallbackRequestClaim interface {
+	Fn(*Ticket, error)
+}
+
+func (i *Identity) RequestClaimWithCb(baseUrl, data string, c CallbackRequestClaim) {
+	go func() { c.Fn(i.RequestClaim(baseUrl, data)) }()
 }
 
 // ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier
 // the callback is used to check if the verifier has accepted the credential as valid
-func (i *Identity) ProveClaim(baseUrl string, credId []byte, c Callback) {
+func (i *Identity) ProveClaim(baseUrl string, credId []byte) (bool, error) {
 	// TODO: add context
-	go func() {
-		// Get credential existance
-		credExis, err := i.ClaimDB.GetReceivedCredential(credId)
-		if err != nil {
-			c.VerifierResHandler(false, err)
-			return
-		}
-		// Build credential validity
-		credVal, err := i.id.HolderGetCredentialValidity(credExis)
-		if err != nil {
-			c.VerifierResHandler(false, err)
-			return
-		}
-		// Send credential to verifier
-		httpClient := httpclient.NewHttpClient(baseUrl)
-		if err := httpClient.DoRequest(httpClient.NewRequest().Path(
-			"verify").Post("").BodyJSON(verifierMsg.ReqVerify{
-			CredentialValidity: credVal,
-		}), nil); err != nil {
-			// Credential declined / error
-			c.VerifierResHandler(false, err)
-			return
-		}
-		// Success
-		c.VerifierResHandler(true, nil)
-	}()
+	// Get credential existance
+	credExis, err := i.ClaimDB.GetReceivedCredential(credId)
+	if err != nil {
+		return false, err
+	}
+	// Build credential validity
+	credVal, err := i.id.HolderGetCredentialValidity(credExis)
+	if err != nil {
+		return false, err
+	}
+	// Send credential to verifier
+	httpClient := httpclient.NewHttpClient(baseUrl)
+	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
+		"verify").Post("").BodyJSON(verifierMsg.ReqVerify{
+		CredentialValidity: credVal,
+	}), nil); err != nil {
+		// Credential declined / error
+		return false, err
+	}
+	// Success
+	return true, nil
+}
+
+type CallbackProveClaim interface {
+	Fn(bool, error)
+}
+
+func (i *Identity) ProveClaimWithCb(baseUrl string, credId []byte, c CallbackProveClaim) {
+	go func() { c.Fn(i.ProveClaim(baseUrl, credId)) }()
 }
