@@ -1,4 +1,4 @@
-module github.com/iden3/iden3-mobile/mobile
+module github.com/iden3/iden3-mobile/go
 
 go 1.13
 

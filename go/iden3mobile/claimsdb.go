@@ -11,10 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	credExisPrefix = "credExis"
-)
-
 type ClaimDB struct {
 	storage db.Storage
 	m       sync.Mutex

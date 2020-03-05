@@ -7,13 +7,13 @@ helper-scripts/
 ####### mockup server
 go/mockupServer/main/main
 ####### gomobile
-go/mobile/config.yml
-go/mobile/iden3mobile-sources.jar
-go/mobile/iden3mobile
+**/config.yml
+go/iden3mobile/iden3mobile-sources.jar
+go/iden3mobile/iden3mobile
 # uncompressed jar
-go/mobile/go
-go/mobile/META-INF
-go/mobile/mobile
+go/iden3mobile/go
+go/iden3mobile/META-INF
+go/iden3mobile/mobile
 
 ####### FLUTTER GITIGNORE TEMPLATE:
 ####### https://github.com/flutter/flutter/blob/master/.gitignore
