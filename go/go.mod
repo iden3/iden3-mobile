@@ -15,7 +15,7 @@ require (
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/iden3/go-iden3-core v0.0.7-0.20200221170011-5d44e8c442e6
+	github.com/iden3/go-iden3-core v0.0.7-0.20200302110202-58bdf66e7182
 	github.com/iden3/go-iden3-crypto v0.0.3-0.20190831180703-c95c95b7b161
 	github.com/iden3/go-iden3-servers-demo v0.0.0-20200222110233-acd5cba4952c
 	github.com/ipfs/go-log v1.0.1 // indirect

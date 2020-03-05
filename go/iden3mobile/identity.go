@@ -61,7 +61,7 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 		}
 		return nil, err
 	}
-	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
+	_, keyStore, storage, err := loadComponents(storePath, web3Url)
 	if err != nil {
 		return nil, err
 	}
@@ -97,17 +97,13 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 		return nil, err
 	}
 	// Create new Identity (holder)
-	_, err = holder.New(
+	if _, err = holder.Create(
 		holder.ConfigDefault,
 		kOpComp,
 		nil,
 		storage,
 		keyStore,
-		idenPubOnChain,
-		nil,
-		readerhttp.NewIdenPubOffChainHttp(),
-	)
-	if err != nil {
+	); err != nil {
 		return nil, err
 	}
 	// Init claim DB
