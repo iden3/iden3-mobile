@@ -47,6 +47,7 @@ const ticketPrefix = "tickets"
 
 type Tickets struct {
 	storage db.Storage
+	// TODO: add cancel channel, make cancelation sync
 }
 
 func NewTickets(storage db.Storage) *Tickets {
@@ -61,7 +62,7 @@ func (ts *Tickets) Add(tickets []Ticket) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Adding / Updating ", len(tickets), " tickets")
+	log.Debug("Adding / Updating ", len(tickets), " tickets")
 	for _, ticket := range tickets {
 		if err := db.StoreJSON(tx, []byte(ticket.Id), ticket); err != nil {
 			return err
@@ -89,7 +90,7 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 		}
 		var wg sync.WaitGroup
 		nPendingTickets := len(tickets)
-		finished := make(chan Ticket, nPendingTickets)
+		checkedTickets := make(chan Ticket, nPendingTickets)
 		events := make(chan Event, nPendingTickets)
 		log.Debug("Checking ", nPendingTickets, " pending tickets")
 		for _, ticket := range tickets {
@@ -107,34 +108,36 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 						Data:     data,
 						Err:      err,
 					}
+					// Update ticket status
 					if err != nil {
 						t.Status = TicketStatusDoneError
 					} else {
 						t.Status = TicketStatusDone
 					}
-					finished <- t
+					checkedTickets <- t
 				} else {
 					if err != nil {
 						log.Error("Error handling ticket: "+t.Id, err)
 					}
-					// Update last checked time
+					// Update ticket last checked time
 					t.LastChecked = int64(time.Now().Unix())
+					checkedTickets <- t
 				}
 			}(*ticket)
 		}
 		wg.Wait()
 		// Update tickets that are done
-		close(finished)
-		var finishedTickets []Ticket
+		close(checkedTickets)
+		var ticketsToUpdate []Ticket
 		nResolvedTickets := 0
-		for ticket := range finished {
-			finishedTickets = append(finishedTickets, ticket)
+		for ticket := range checkedTickets {
+			ticketsToUpdate = append(ticketsToUpdate, ticket)
 			nResolvedTickets++
 		}
 		log.Debug("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
-		if len(finishedTickets) > 0 {
-			if err := ts.Add(finishedTickets); err != nil {
-				log.Error("Error updating tickets that have been resolved. Will check them next iteration.")
+		if len(ticketsToUpdate) > 0 {
+			if err := ts.Add(ticketsToUpdate); err != nil {
+				log.Error("Error updating tickets. Will check them next iteration.")
 			}
 		}
 		close(events)

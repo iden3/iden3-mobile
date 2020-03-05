@@ -142,21 +142,9 @@ func TestTicketSystem(t *testing.T) {
 	wgAsyncTest.Done()
 	require.Nil(t, ts2.Cancel("ts2 - remove1"))
 	wgAsyncTest.Done()
+	// Stop ticket system
 	stopTs1 <- true
 	stopTs2 <- true
-	// stopEv1 <- true
-	// stopEv2 <- true
-	// Load tickets
-	stopTs1 = make(chan bool)
-	// stopEv1 = make(chan bool)
-	ts1 = NewTickets(storage1)
-	// go eventHandler(eventCh1, stopEv1)
-	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
-	stopTs2 = make(chan bool)
-	// stopEv2 = make(chan bool)
-	ts2 = NewTickets(storage2)
-	// go eventHandler(eventCh2, stopEv2)
-	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// Make after stop tickets finish
 	id1After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
 	id2After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
@@ -164,6 +152,13 @@ func TestTicketSystem(t *testing.T) {
 	id2After2.handler = &testTicketHandler{SayImDone: true, Err: "Something went wrong"}
 	require.Nil(t, ts1.Add([]Ticket{id1After1, id1After2}))
 	require.Nil(t, ts2.Add([]Ticket{id2After1, id2After2}))
+	// Restart ticket siatem
+	stopTs1 = make(chan bool)
+	ts1 = NewTickets(storage1)
+	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
+	stopTs2 = make(chan bool)
+	ts2 = NewTickets(storage2)
+	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// After loading identity, tickets "Succes ticket after stop" and "Fail ticket after stop" will get resolved
 	// Cancel ticket remove2
 	require.Nil(t, ts1.Cancel("ts1 - remove2"))
