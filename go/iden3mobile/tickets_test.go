@@ -1,6 +1,7 @@
 package iden3mobile
 
 import (
+	"fmt"
 	"io/ioutil"
 	"sync"
 	"testing"
@@ -183,6 +184,7 @@ func TestTicketSystem(t *testing.T) {
 	iterFn := func(t *Ticket) (bool, error) {
 		if t.Status == TicketStatusPending {
 			pendingTicketsCounter++
+			fmt.Printf(">>> %+v\n", *t)
 		}
 		return true, nil
 	}

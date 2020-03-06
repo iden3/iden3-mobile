@@ -71,6 +71,71 @@ func (ts *Tickets) Add(tickets []Ticket) error {
 	return tx.Commit()
 }
 
+func (ts *Tickets) checkPendingOnce(id *Identity, eventCh chan Event) error {
+	tickets, err := ts.GetPending()
+	if err != nil {
+		// Should cause panic instead?
+		return err
+	}
+	var wg sync.WaitGroup
+	nPendingTickets := len(tickets)
+	checkedTickets := make(chan Ticket, nPendingTickets)
+	events := make(chan Event, nPendingTickets)
+	log.Debug("Checking ", nPendingTickets, " pending tickets")
+	for _, ticket := range tickets {
+		// Check ticket
+		wg.Add(1)
+		go func(t Ticket) {
+			defer wg.Done()
+			isDone, data, err := t.handler.isDone(id)
+			if isDone {
+				// Resolve ticket
+				log.Info("Sending event for ticket: " + t.Id)
+				events <- Event{
+					Type:     t.Type,
+					TicketId: t.Id,
+					Data:     data,
+					Err:      err,
+				}
+				// Update ticket status
+				if err != nil {
+					t.Status = TicketStatusDoneError
+				} else {
+					t.Status = TicketStatusDone
+				}
+				checkedTickets <- t
+			} else {
+				if err != nil {
+					log.Error("Error handling ticket: "+t.Id, err)
+				}
+				// Update ticket last checked time
+				t.LastChecked = int64(time.Now().Unix())
+				checkedTickets <- t
+			}
+		}(*ticket)
+	}
+	wg.Wait()
+	// Update tickets that are done
+	close(checkedTickets)
+	var ticketsToUpdate []Ticket
+	nResolvedTickets := 0
+	for ticket := range checkedTickets {
+		ticketsToUpdate = append(ticketsToUpdate, ticket)
+		nResolvedTickets++
+	}
+	log.Debug("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
+	if len(ticketsToUpdate) > 0 {
+		if err := ts.Add(ticketsToUpdate); err != nil {
+			log.Error("Error updating tickets. Will check them next iteration.")
+		}
+	}
+	close(events)
+	for ev := range events {
+		eventCh <- ev
+	}
+	return nil
+}
+
 func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPeriod time.Duration, stopCh chan bool) {
 	// TODO: give more control to native host (check now, ...): Impl ctx context, Check out futures @ rust for inspiration.
 	for {
@@ -81,68 +146,8 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 			return
 		default:
 		}
-		tickets, err := ts.GetPending()
-		if err != nil {
-			// Should cause panic instead?
-			log.Error("Error loading pending tickets", err)
-			time.Sleep(checkPendingPeriod)
-			continue
-		}
-		var wg sync.WaitGroup
-		nPendingTickets := len(tickets)
-		checkedTickets := make(chan Ticket, nPendingTickets)
-		events := make(chan Event, nPendingTickets)
-		log.Debug("Checking ", nPendingTickets, " pending tickets")
-		for _, ticket := range tickets {
-			// Check ticket
-			wg.Add(1)
-			go func(t Ticket) {
-				defer wg.Done()
-				isDone, data, err := t.handler.isDone(id)
-				if isDone {
-					// Resolve ticket
-					log.Info("Sending event for ticket: " + t.Id)
-					events <- Event{
-						Type:     t.Type,
-						TicketId: t.Id,
-						Data:     data,
-						Err:      err,
-					}
-					// Update ticket status
-					if err != nil {
-						t.Status = TicketStatusDoneError
-					} else {
-						t.Status = TicketStatusDone
-					}
-					checkedTickets <- t
-				} else {
-					if err != nil {
-						log.Error("Error handling ticket: "+t.Id, err)
-					}
-					// Update ticket last checked time
-					t.LastChecked = int64(time.Now().Unix())
-					checkedTickets <- t
-				}
-			}(*ticket)
-		}
-		wg.Wait()
-		// Update tickets that are done
-		close(checkedTickets)
-		var ticketsToUpdate []Ticket
-		nResolvedTickets := 0
-		for ticket := range checkedTickets {
-			ticketsToUpdate = append(ticketsToUpdate, ticket)
-			nResolvedTickets++
-		}
-		log.Debug("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
-		if len(ticketsToUpdate) > 0 {
-			if err := ts.Add(ticketsToUpdate); err != nil {
-				log.Error("Error updating tickets. Will check them next iteration.")
-			}
-		}
-		close(events)
-		for ev := range events {
-			eventCh <- ev
+		if err := ts.checkPendingOnce(id, eventCh); err != nil {
+			log.WithError(err).Error("Error checking pending tickets")
 		}
 		// Should stop?
 		select {
@@ -189,7 +194,6 @@ func (t *Ticket) UnmarshalJSON(b []byte) error {
 
 func (ts *Tickets) GetPending() ([]*Ticket, error) {
 	var tickets []*Ticket
-	// ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
 	if err := ts.storage.Iterate(func(key, value []byte) (bool, error) {
 		// load ticket
 		var ticket Ticket
