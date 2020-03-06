@@ -123,8 +123,14 @@ func TestHolder(t *testing.T) {
 	require.Nil(t, err)
 	// Prove claim
 	for i := 0; i < c.VerifierAttempts; i++ {
-		success1, _ := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
-		success2, _ := id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
+		success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
+		if err != nil {
+			log.Error("Error proving claim: ", err)
+		}
+		success2, err := id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
+		if err != nil {
+			log.Error("Error proving claim: ", err)
+		}
 		if success1 && success2 {
 			break
 		}

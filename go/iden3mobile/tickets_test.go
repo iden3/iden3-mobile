@@ -106,12 +106,14 @@ func TestTicketSystem(t *testing.T) {
 	stopTs1 := make(chan bool)
 	stopEv1 := make(chan bool)
 	ts1 := NewTickets(storage1)
+	require.Nil(t, ts1.Init())
 	go eventHandler(eventCh1, stopEv1)
 	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
+	eventCh2 := make(chan Event)
 	stopTs2 := make(chan bool)
 	stopEv2 := make(chan bool)
-	eventCh2 := make(chan Event)
 	ts2 := NewTickets(storage2)
+	require.Nil(t, ts2.Init())
 	go eventHandler(eventCh2, stopEv2)
 	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// Add tickets
@@ -135,12 +137,12 @@ func TestTicketSystem(t *testing.T) {
 	addTestTicket(ts1, "ts1 - remove3", "Something went wrong", `{}`, false, false)
 	addTestTicket(ts2, "ts2 - remove3", "Something went wrong", `{}`, false, false)
 	// Give time to process tickets for the first time.
-	time.Sleep(time.Duration(2 * time.Millisecond))
+	time.Sleep(time.Duration(c.HolderTicketPeriod*2) * time.Millisecond)
 	// At this point tickets "Succes ticket before stop" and "Fail ticket before stop" should be resolved
 	// Cancel ticket remove1
-	require.Nil(t, ts1.Cancel("ts1 - remove1"))
+	require.Nil(t, ts1.CancelTicket("ts1 - remove1"))
 	wgAsyncTest.Done()
-	require.Nil(t, ts2.Cancel("ts2 - remove1"))
+	require.Nil(t, ts2.CancelTicket("ts2 - remove1"))
 	wgAsyncTest.Done()
 	// Stop ticket system
 	stopTs1 <- true
@@ -161,24 +163,25 @@ func TestTicketSystem(t *testing.T) {
 	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
 	// After loading identity, tickets "Succes ticket after stop" and "Fail ticket after stop" will get resolved
 	// Cancel ticket remove2
-	require.Nil(t, ts1.Cancel("ts1 - remove2"))
+	require.Nil(t, ts1.CancelTicket("ts1 - remove2"))
 	wgAsyncTest.Done()
 	// Randomize goroutines excution
-	time.Sleep(time.Duration(1 * time.Millisecond))
-	require.Nil(t, ts2.Cancel("ts2 - remove2"))
+	time.Sleep(time.Duration(c.HolderTicketPeriod*2) * time.Millisecond)
+	require.Nil(t, ts2.CancelTicket("ts2 - remove2"))
 	wgAsyncTest.Done()
 	// Randomize goroutines excution
 	time.Sleep(time.Duration(1 * time.Millisecond))
 	// Cancel ticket remove3
-	require.Nil(t, ts1.Cancel("ts1 - remove3"))
+	require.Nil(t, ts1.CancelTicket("ts1 - remove3"))
 	wgAsyncTest.Done()
-	require.Nil(t, ts2.Cancel("ts2 - remove3"))
+	require.Nil(t, ts2.CancelTicket("ts2 - remove3"))
 	wgAsyncTest.Done()
 	// Wait for all tickets to produce events
 	wgAsyncTest.Wait()
 	// Compare received events vs expected events
 	require.Equal(t, expectedEvents.Map, receivedEvents.Map)
-	// Check that there are no pending tickets
+	// Check that there are no pending tickets, give time for cancellation to be effective
+	time.Sleep(time.Duration(c.HolderTicketPeriod*2) * time.Millisecond)
 	pendingTicketsCounter := 0
 	iterFn := func(t *Ticket) (bool, error) {
 		if t.Status == TicketStatusPending {

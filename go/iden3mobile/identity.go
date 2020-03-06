@@ -106,8 +106,11 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	); err != nil {
 		return nil, err
 	}
-	// Init claim DB
-	// cdb := NewClaimDB(storage.WithPrefix([]byte(credExisPrefix)))
+	// Init tickets
+	ts := NewTickets(storage.WithPrefix([]byte(ticketPrefix)))
+	if err := ts.Init(); err != nil {
+		return nil, err
+	}
 	// Verify that the Identity can be loaded successfully
 	keyStore.Close()
 	storage.Close()

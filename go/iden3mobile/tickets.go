@@ -32,6 +32,8 @@ const (
 	TicketStatusDoneError = "Done with error"
 	TicketStatusPending   = "Pending"
 	TicketStatusCancel    = "Canceled"
+	ticketsToCancelKey    = "ticketsToCancelKey"
+	ticketsKey            = "ticketsKey"
 )
 
 type Ticket struct {
@@ -46,19 +48,31 @@ type Ticket struct {
 const ticketPrefix = "tickets"
 
 type Tickets struct {
-	storage db.Storage
-	// TODO: add cancel channel, make cancelation sync
+	storage       db.Storage
+	ticketStorage db.Storage
+	m             sync.Mutex
 }
 
 func NewTickets(storage db.Storage) *Tickets {
-	return &Tickets{storage: storage}
+	return &Tickets{
+		storage:       storage,
+		ticketStorage: storage.WithPrefix([]byte(ticketsKey)),
+	}
+}
+
+func (ts *Tickets) Init() error {
+	ts.m.Lock()
+	defer ts.m.Unlock()
+	return ts.storeTicketsToCancel([]string{})
 }
 
 func (ts *Tickets) Add(tickets []Ticket) error {
+	ts.m.Lock()
+	defer ts.m.Unlock()
 	if len(tickets) == 0 {
 		return errors.New("tickets is empty!")
 	}
-	tx, err := ts.storage.NewTx()
+	tx, err := ts.ticketStorage.NewTx()
 	if err != nil {
 		return err
 	}
@@ -71,6 +85,60 @@ func (ts *Tickets) Add(tickets []Ticket) error {
 	return tx.Commit()
 }
 
+func (ts *Tickets) CancelTicket(id string) error {
+	ts.m.Lock()
+	defer ts.m.Unlock()
+	ticketsToCancel, err := ts.getTicketsToCancel()
+	if err != nil {
+		return err
+	}
+	ticketsToCancel = append(ticketsToCancel, id)
+	return ts.storeTicketsToCancel(ticketsToCancel)
+}
+
+func (ts *Tickets) storeTicketsToCancel(ids []string) error {
+	tx, err := ts.storage.NewTx()
+	if err != nil {
+		return err
+	}
+	if err := db.StoreJSON(tx, []byte(ticketsToCancelKey), ids); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (ts *Tickets) getTicketsToCancel() ([]string, error) {
+	ticketsToCancel := &[]string{}
+	err := db.LoadJSON(ts.storage, []byte(ticketsToCancelKey), ticketsToCancel)
+	return *ticketsToCancel, err
+}
+
+func (ts *Tickets) removeTicketsToCancel(cancelledIds []string) error {
+	ts.m.Lock()
+	defer ts.m.Unlock()
+	// get current tickets
+	ticketsToCancel, err := ts.getTicketsToCancel()
+	if err != nil {
+		return err
+	}
+	// filter tickets that appear on the provided list
+	ticketsToCancelCleaned := []string{}
+	for _, toCancelId := range ticketsToCancel {
+		isCancelled := false
+		for _, cancelledId := range cancelledIds {
+			if toCancelId == cancelledId {
+				isCancelled = true
+				// continue
+			}
+		}
+		if !isCancelled {
+			ticketsToCancelCleaned = append(ticketsToCancelCleaned, toCancelId)
+		}
+	}
+	// overwrite with the filtered list
+	return ts.storeTicketsToCancel(ticketsToCancelCleaned)
+}
+
 func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPeriod time.Duration, stopCh chan bool) {
 	// TODO: give more control to native host (check now, ...): Impl ctx context, Check out futures @ rust for inspiration.
 	for {
@@ -81,10 +149,19 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 			return
 		default:
 		}
+		// Check if ticket has been canceled
+		ts.m.Lock()
+		idsToCancel, err := ts.getTicketsToCancel()
+		ts.m.Unlock()
+		if err != nil {
+			log.Error("Error geting cancelled ids: ", err)
+			time.Sleep(checkPendingPeriod)
+			continue
+		}
 		tickets, err := ts.GetPending()
 		if err != nil {
 			// Should cause panic instead?
-			log.Error("Error loading pending tickets", err)
+			log.Error("Error loading pending tickets: ", err)
 			time.Sleep(checkPendingPeriod)
 			continue
 		}
@@ -94,6 +171,20 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 		events := make(chan Event, nPendingTickets)
 		log.Debug("Checking ", nPendingTickets, " pending tickets")
 		for _, ticket := range tickets {
+			// If cancelled, cancel
+			isCancelled := false
+			for _, idToCancel := range idsToCancel {
+				if idToCancel == ticket.Id {
+					ticket.Status = TicketStatusCancel
+					isCancelled = true
+					checkedTickets <- *ticket
+					continue
+				}
+			}
+			if isCancelled {
+				// cehck next ticket, this one is cancelled
+				continue
+			}
 			// Check ticket
 			wg.Add(1)
 			go func(t Ticket) {
@@ -126,18 +217,43 @@ func (ts *Tickets) CheckPending(id *Identity, eventCh chan Event, checkPendingPe
 			}(*ticket)
 		}
 		wg.Wait()
-		// Update tickets that are done
+		// Check if ticket has been canceled
+		ts.m.Lock()
+		idsToCancel, err = ts.getTicketsToCancel()
+		ts.m.Unlock()
+		if err != nil {
+			log.Error("Error geting cancelled ids: ", err)
+		}
+		// Update tickets
 		close(checkedTickets)
 		var ticketsToUpdate []Ticket
+		var canceledTicketIds []string
 		nResolvedTickets := 0
 		for ticket := range checkedTickets {
+			for _, idToCancel := range idsToCancel {
+				if idToCancel == ticket.Id {
+					if ticket.Status == TicketStatusPending {
+						ticket.Status = TicketStatusCancel
+					}
+					canceledTicketIds = append(canceledTicketIds, ticket.Id)
+					continue
+				}
+			}
 			ticketsToUpdate = append(ticketsToUpdate, ticket)
-			nResolvedTickets++
+			if ticket.Status == TicketStatusDone {
+				nResolvedTickets++
+			}
 		}
 		log.Debug("Done checking tickets. ", nResolvedTickets, " / ", nPendingTickets, " pending tickets has been resolved.")
 		if len(ticketsToUpdate) > 0 {
 			if err := ts.Add(ticketsToUpdate); err != nil {
 				log.Error("Error updating tickets. Will check them next iteration.")
+			}
+		}
+		if len(canceledTicketIds) > 0 {
+			log.Debug(len(canceledTicketIds), " tickets have been cancelled.")
+			if err := ts.removeTicketsToCancel(canceledTicketIds); err != nil {
+				log.Error("Error updating tickets to cancel: ", err)
 			}
 		}
 		close(events)
@@ -189,8 +305,7 @@ func (t *Ticket) UnmarshalJSON(b []byte) error {
 
 func (ts *Tickets) GetPending() ([]*Ticket, error) {
 	var tickets []*Ticket
-	// ticketsDB := i.storage.WithPrefix([]byte(ticketPrefix))
-	if err := ts.storage.Iterate(func(key, value []byte) (bool, error) {
+	if err := ts.ticketStorage.Iterate(func(key, value []byte) (bool, error) {
 		// load ticket
 		var ticket Ticket
 		if err := ticket.UnmarshalJSON(value); err != nil {
@@ -209,7 +324,7 @@ func (ts *Tickets) GetPending() ([]*Ticket, error) {
 }
 
 func (ts *Tickets) Iterate_(fn func(*Ticket) (bool, error)) error {
-	if err := ts.storage.Iterate(
+	if err := ts.ticketStorage.Iterate(
 		func(key, value []byte) (bool, error) {
 			// load ticket
 			var ticket Ticket
@@ -229,15 +344,6 @@ type TicketOperator interface {
 }
 
 func (ts *Tickets) Iterate(handler TicketOperator) error { return ts.Iterate_(handler.Iterate) }
-
-func (ts *Tickets) Cancel(id string) error {
-	var ticket Ticket
-	if err := db.LoadJSON(ts.storage, []byte(id), &ticket); err != nil {
-		return err
-	}
-	ticket.Status = TicketStatusCancel
-	return ts.Add([]Ticket{ticket})
-}
 
 // TODO: Move this code to test
 type testTicketHandler struct {

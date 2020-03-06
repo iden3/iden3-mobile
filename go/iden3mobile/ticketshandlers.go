@@ -14,6 +14,12 @@ import (
 
 // TODO: async wrappers (with and without callback)
 
+type reqClaimHandler struct {
+	Id      int
+	BaseUrl string
+	Claim   *merkletree.Entry
+	DBkey   []byte
+}
 type resClaimStatusHandler struct {
 	Claim            *merkletree.Entry
 	CredentialTicket *Ticket
@@ -22,6 +28,11 @@ type resClaimStatusHandler struct {
 
 type reqClaimStatusHandler struct {
 	Id      int
+	BaseUrl string
+}
+
+type reqClaimCredentialHandler struct {
+	Claim   *merkletree.Entry
 	BaseUrl string
 }
 
@@ -78,11 +89,6 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 	default:
 		return true, "{}", errors.New("Unexpected response from issuer")
 	}
-}
-
-type reqClaimCredentialHandler struct {
-	Claim   *merkletree.Entry
-	BaseUrl string
 }
 
 func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
