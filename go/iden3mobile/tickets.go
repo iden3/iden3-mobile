@@ -25,8 +25,7 @@ type TicketType string
 type TicketStatus string
 
 const (
-	TicketTypeClaimStatus = "RequestClaimStatus"
-	TicketTypeClaimCred   = "RequestClaimCredential"
+	TicketTypeClaimReq    = "RequestClaim"
 	TicketTypeTest        = "test ticket"
 	TicketStatusDone      = "Done"
 	TicketStatusDoneError = "Done with error"
@@ -288,10 +287,8 @@ func (t *Ticket) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	switch t.Type {
-	case TicketTypeClaimStatus:
-		t.handler = &reqClaimStatusHandler{}
-	case TicketTypeClaimCred:
-		t.handler = &reqClaimCredentialHandler{}
+	case TicketTypeClaimReq:
+		t.handler = &reqClaimHandler{}
 	case TicketTypeTest:
 		t.handler = &testTicketHandler{}
 	default:

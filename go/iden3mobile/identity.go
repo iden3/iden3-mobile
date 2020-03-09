@@ -175,7 +175,7 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 	id := uuid.New().String()
 	t := &Ticket{
 		Id:     id,
-		Type:   TicketTypeClaimStatus,
+		Type:   TicketTypeClaimReq,
 		Status: TicketStatusPending,
 	}
 	httpClient := httpclient.NewHttpClient(baseUrl)
@@ -186,9 +186,10 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 	}), &res); err != nil {
 		return nil, err
 	}
-	t.handler = &reqClaimStatusHandler{
+	t.handler = &reqClaimHandler{
 		Id:      res.Id,
 		BaseUrl: baseUrl,
+		Status:  string(issuerMsg.RequestStatusPending),
 	}
 	err := i.Tickets.Add([]Ticket{*t})
 	return t, err
