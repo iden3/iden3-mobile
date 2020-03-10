@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/iden3/go-iden3-core/components/httpclient"
 	"github.com/iden3/go-iden3-core/merkletree"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
@@ -14,19 +13,30 @@ import (
 
 // TODO: async wrappers (with and without callback)
 
-type resClaimStatusHandler struct {
-	Claim            *merkletree.Entry
-	CredentialTicket *Ticket
-	Status           string
-}
-
-type reqClaimStatusHandler struct {
+type reqClaimHandler struct {
 	Id      int
 	BaseUrl string
+	Claim   *merkletree.Entry
+	DBkey   []byte
+	Status  string
+}
+
+type eventReqClaim struct {
+	Claim *merkletree.Entry
+	DBkey []byte
+}
+
+func (h *reqClaimHandler) isDone(id *Identity) (bool, string, error) {
+	if h.Status == string(issuerMsg.RequestStatusPending) {
+		return h.checkClaimStatus(id)
+	} else if h.Status == string(issuerMsg.ClaimtStatusNotYet) {
+		return h.checkClaimCredential(id)
+	}
+	return true, "", errors.New("Unexpected status, aborting claim request.")
 }
 
 //
-func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
+func (h *reqClaimHandler) checkClaimStatus(id *Identity) (bool, string, error) {
 	httpClient := httpclient.NewHttpClient(h.BaseUrl)
 	var res issuerMsg.ResClaimStatus
 	// it's ok to remove ticket on a network error?
@@ -35,15 +45,13 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 		fmt.Sprintf("claim/status/%v", h.Id)).Get(""), &res); err != nil {
 		return true, "{}", err
 	}
-	// TODO: returned "json" should be equal in all cases
 	switch res.Status {
 	case issuerMsg.RequestStatusPending:
 		return false, "", nil
 	case issuerMsg.RequestStatusRejected:
-		event := resClaimStatusHandler{
-			Claim:            res.Claim,
-			CredentialTicket: nil,
-			Status:           string(res.Status),
+		event := eventReqClaim{
+			Claim: nil,
+			DBkey: nil,
 		}
 		j, err := json.Marshal(event)
 		if err != nil {
@@ -52,41 +60,15 @@ func (h *reqClaimStatusHandler) isDone(id *Identity) (bool, string, error) {
 		return true, string(j), nil
 	case issuerMsg.RequestStatusApproved:
 		// Create new ticket to handle credential request
-		ticket := &Ticket{
-			Id:     uuid.New().String(),
-			Type:   TicketTypeClaimCred,
-			Status: TicketStatusPending,
-			handler: &reqClaimCredentialHandler{
-				Claim:   res.Claim,
-				BaseUrl: h.BaseUrl,
-			},
-		}
-		// Add credential request ticket
-		if err := id.Tickets.Add([]Ticket{*ticket}); err != nil {
-			return true, "{}", err
-		}
-		// Send event with received claim and credential request ticket
-		event := resClaimStatusHandler{
-			Claim:            res.Claim,
-			CredentialTicket: ticket,
-			Status:           string(res.Status),
-		}
-		j, err := json.Marshal(event)
-		if err != nil {
-			return true, "{}", err
-		}
-		return true, string(j), nil
+		h.Claim = res.Claim
+		h.Status = string(issuerMsg.ClaimtStatusNotYet)
+		return false, "", nil
 	default:
 		return true, "{}", errors.New("Unexpected response from issuer")
 	}
 }
 
-type reqClaimCredentialHandler struct {
-	Claim   *merkletree.Entry
-	BaseUrl string
-}
-
-func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
+func (h *reqClaimHandler) checkClaimCredential(id *Identity) (bool, string, error) {
 	httpClient := httpclient.NewHttpClient(h.BaseUrl)
 	res := issuerMsg.ResClaimCredential{}
 	// it's ok to remove ticket on a network error?
@@ -105,16 +87,24 @@ func (h *reqClaimCredentialHandler) isDone(id *Identity) (bool, string, error) {
 		if !h.Claim.Equal(res.Credential.Claim) {
 			err := errors.New("The received credential doesn't match the issued claim")
 			log.Error(err)
-			return true, "", err
+			return true, "{}", err
 		}
 		// Add credential to the identity
-		if _, err := id.ClaimDB.AddCredentialExistance(res.Credential); err != nil {
+		dbKey, err := id.ClaimDB.AddCredentialExistance(res.Credential)
+		if err != nil {
 			log.Error("Error storing credential existance", err)
-			return true, "", err
+			return true, "{}", err
 		}
 		// Send event with success
-		// TODO: return db key
-		return true, `{"success":true}`, nil
+		h.Status = string(issuerMsg.ClaimtStatusReady)
+		j, err := json.Marshal(eventReqClaim{
+			Claim: h.Claim,
+			DBkey: dbKey,
+		})
+		if err != nil {
+			return true, "{}", err
+		}
+		return true, string(j), nil
 	default:
 		return true, "{}", errors.New("Unexpected response from issuer")
 	}

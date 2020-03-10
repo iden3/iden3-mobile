@@ -106,8 +106,11 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	); err != nil {
 		return nil, err
 	}
-	// Init claim DB
-	// cdb := NewClaimDB(storage.WithPrefix([]byte(credExisPrefix)))
+	// Init tickets
+	ts := NewTickets(storage.WithPrefix([]byte(ticketPrefix)))
+	if err := ts.Init(); err != nil {
+		return nil, err
+	}
 	// Verify that the Identity can be loaded successfully
 	keyStore.Close()
 	storage.Close()
@@ -172,7 +175,7 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 	id := uuid.New().String()
 	t := &Ticket{
 		Id:     id,
-		Type:   TicketTypeClaimStatus,
+		Type:   TicketTypeClaimReq,
 		Status: TicketStatusPending,
 	}
 	httpClient := httpclient.NewHttpClient(baseUrl)
@@ -183,9 +186,10 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 	}), &res); err != nil {
 		return nil, err
 	}
-	t.handler = &reqClaimStatusHandler{
+	t.handler = &reqClaimHandler{
 		Id:      res.Id,
 		BaseUrl: baseUrl,
+		Status:  string(issuerMsg.RequestStatusPending),
 	}
 	err := i.Tickets.Add([]Ticket{*t})
 	return t, err
