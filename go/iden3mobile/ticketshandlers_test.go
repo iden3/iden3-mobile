@@ -20,12 +20,10 @@ func holderEventHandler(ev *Event) {
 	}
 	log.Info("--- TEST LOG: Test event received. Type: ", ev.Type, ". Id: ", ev.TicketId, ". Data: ", ev.Data)
 	// Check if the event was expected
-	expectedEvents.Lock()
-	defer expectedEvents.Unlock()
-	if evn, ok := expectedEvents.Map[ev.TicketId]; !ok || evn.Typ != ev.Type {
+	if evn, ok := expectedEvents[ev.TicketId]; !ok || evn.Typ != ev.Type {
 		panic("Unexpected event")
 	} else {
-		delete(expectedEvents.Map, ev.TicketId)
+		delete(expectedEvents, ev.TicketId)
 	}
 	// Evaluate event
 	switch ev.Type {
@@ -48,9 +46,7 @@ func holderEventHandler(ev *Event) {
 }
 
 func TestHolderHandlers(t *testing.T) {
-	expectedEvents = eventsMap{
-		Map: make(map[string]event),
-	}
+	expectedEvents = make(map[string]event)
 	// Create two new identities without extra claims
 	dir1, err := ioutil.TempDir("", "holderTest1")
 	require.Nil(t, err)
@@ -66,11 +62,11 @@ func TestHolderHandlers(t *testing.T) {
 	// Request claim
 	t1, err := id1.RequestClaim(c.IssuerUrl, id1.id.ID().String())
 	require.Nil(t, err)
-	expectedEvents.Map[t1.Id] = event{Typ: t1.Type}
+	expectedEvents[t1.Id] = event{Typ: t1.Type}
 
 	t2, err := id2.RequestClaim(c.IssuerUrl, id2.id.ID().String())
 	require.Nil(t, err)
-	expectedEvents.Map[t2.Id] = event{Typ: t2.Type}
+	expectedEvents[t2.Id] = event{Typ: t2.Type}
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
@@ -80,9 +76,13 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
 	eventFromId = 1
-	holderEventHandler(id1.GetNextEvent()) // Wait until the issuer response produce event
+	ev1, err := id1.GetNextEvent()
+	require.Nil(t, err)
+	holderEventHandler(ev1) // Wait until the issuer response produce event
 	eventFromId = 2
-	holderEventHandler(id2.GetNextEvent()) // Wait until the issuer response produce event
+	ev2, err := id2.GetNextEvent()
+	holderEventHandler(ev2) // Wait until the issuer response produce event
+	require.Nil(t, err)
 	// Prove claim
 	for i := 0; i < c.VerifierAttempts; i++ {
 		success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
