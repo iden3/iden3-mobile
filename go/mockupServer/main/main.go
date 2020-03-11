@@ -32,7 +32,7 @@ type pendingClaimsMap struct {
 }
 
 var c = conf{}
-var claimCounter = counter{n: 0}
+var claimCounter = counter{n: 1}
 
 func main() {
 	// init
