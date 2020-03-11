@@ -7,11 +7,11 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.5.7 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20200214154357-2151774b0d85 // indirect
 	github.com/btcsuite/btcutil v1.0.1 // indirect
+	github.com/dghubble/sling v1.3.0
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/elastic/gosigar v0.10.5 // indirect
 	github.com/ethereum/go-ethereum v1.9.11
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
-	github.com/go-playground/validator/v10 v10.2.0
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
@@ -55,5 +55,6 @@ require (
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
 	gopkg.in/go-playground/assert.v1 v1.2.1
+	gopkg.in/go-playground/validator.v9 v9.29.1
 	gopkg.in/yaml.v2 v2.2.4
 )

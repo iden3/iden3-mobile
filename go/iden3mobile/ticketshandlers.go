@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/iden3/go-iden3-core/components/httpclient"
 	"github.com/iden3/go-iden3-core/merkletree"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	log "github.com/sirupsen/logrus"
@@ -37,7 +36,7 @@ func (h *reqClaimHandler) isDone(id *Identity) (bool, string, error) {
 
 //
 func (h *reqClaimHandler) checkClaimStatus(id *Identity) (bool, string, error) {
-	httpClient := httpclient.NewHttpClient(h.BaseUrl)
+	httpClient := NewHttpClient(h.BaseUrl)
 	var res issuerMsg.ResClaimStatus
 	// it's ok to remove ticket on a network error?
 	// TODO: impl error counter and remove ticket after limit
@@ -69,7 +68,7 @@ func (h *reqClaimHandler) checkClaimStatus(id *Identity) (bool, string, error) {
 }
 
 func (h *reqClaimHandler) checkClaimCredential(id *Identity) (bool, string, error) {
-	httpClient := httpclient.NewHttpClient(h.BaseUrl)
+	httpClient := NewHttpClient(h.BaseUrl)
 	res := issuerMsg.ResClaimCredential{}
 	// it's ok to remove ticket on a network error?
 	// TODO: impl error counter and remove ticket after limit
