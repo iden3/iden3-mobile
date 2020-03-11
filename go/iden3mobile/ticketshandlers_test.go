@@ -2,6 +2,7 @@ package iden3mobile
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -84,7 +85,8 @@ func TestHolderHandlers(t *testing.T) {
 	holderEventHandler(ev2) // Wait until the issuer response produce event
 	require.Nil(t, err)
 	// Prove claim
-	for i := 0; i < c.VerifierAttempts; i++ {
+	i := 0
+	for ; i < c.VerifierAttempts; i++ {
 		success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
 		if err != nil {
 			log.Error("Error proving claim: ", err)
@@ -97,6 +99,9 @@ func TestHolderHandlers(t *testing.T) {
 			break
 		}
 		time.Sleep(time.Duration(c.VerifierRetryPeriod) * time.Second)
+	}
+	if i == c.VerifierAttempts {
+		panic(fmt.Errorf("Reached maximum number of loops for id{1,2}.ProveClaim"))
 	}
 	id1.Stop()
 	id2.Stop()
