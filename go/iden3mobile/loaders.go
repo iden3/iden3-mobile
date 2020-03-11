@@ -54,7 +54,7 @@ func loadKeyStoreBabyJub(baseStorePath string) (*babykeystore.KeyStore, error) {
 }
 
 // WARNING: THIS CODE IS COPIED FROM go-iden3-servers/loaders/loaders.go
-func loadEthClient2(ks *ethkeystore.KeyStore, acc *accounts.Account, web3Url string) (*eth.Client2, error) {
+func loadEthClient(ks *ethkeystore.KeyStore, acc *accounts.Account, web3Url string) (*eth.Client, error) {
 	// TODO: Handle the hidden: thing with a custon configuration type
 	hidden := strings.HasPrefix(web3Url, "hidden:")
 	if hidden {
@@ -69,11 +69,11 @@ func loadEthClient2(ks *ethkeystore.KeyStore, acc *accounts.Account, web3Url str
 	} else {
 		log.WithField("url", web3Url).Info("Connection to web3 server opened")
 	}
-	return eth.NewClient2(client, acc, ks), nil
+	return eth.NewClient(client, acc, ks), nil
 }
 
 func loadIdenPubOnChain(web3Url string) (idenpubonchain.IdenPubOnChainer, error) {
-	client, err := loadEthClient2(nil, nil, web3Url)
+	client, err := loadEthClient(nil, nil, web3Url)
 	if err != nil {
 		return nil, err
 	}

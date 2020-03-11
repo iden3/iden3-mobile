@@ -2,10 +2,12 @@ package iden3mobile
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/iden3/go-iden3-core/common"
+	"github.com/iden3/go-iden3-core/core/claims"
 	"github.com/iden3/go-iden3-core/core/proof"
 	"github.com/iden3/go-iden3-core/db"
 	log "github.com/sirupsen/logrus"
@@ -77,14 +79,50 @@ func (cdb *ClaimDB) Iterate_(fn func([]byte, *proof.CredentialExistence) (bool, 
 	return nil
 }
 
-func (cdb *ClaimDB) IterateBytes(fn func([]byte, []byte) (bool, error)) error {
-	return cdb.Iterate_(func(key []byte, cred *proof.CredentialExistence) (bool, error) {
-		return fn(key, cred.Claim.Bytes())
-	})
+func (cdb *ClaimDB) IterateCredExistJSON_(fn func([]byte, string) (bool, error)) error {
+	return cdb.Iterate_(
+		func(id []byte, cred *proof.CredentialExistence) (bool, error) {
+			credJSON, err := json.Marshal(cred)
+			if err != nil {
+				return false, err
+			}
+			return fn(id, string(credJSON))
+		},
+	)
+}
+
+func (cdb *ClaimDB) IterateClaimsJSON_(fn func([]byte, string) (bool, error)) error {
+	return cdb.Iterate_(
+		func(id []byte, cred *proof.CredentialExistence) (bool, error) {
+			var claimData interface{}
+			var err error
+			claimData, err = claims.NewClaimFromEntry(cred.Claim)
+			if err == claims.ErrInvalidClaimType {
+				claimData = cred.Claim
+			}
+			var claim struct {
+				Metadata claims.Metadata
+				Data     interface{}
+			}
+			claim.Metadata.Unmarshal(cred.Claim)
+			claim.Data = claimData
+			claimJSON, err := json.Marshal(claim)
+			if err != nil {
+				return false, err
+			}
+			return fn(id, string(claimJSON))
+		},
+	)
 }
 
 type ClaimDBIterFner interface {
-	Fn([]byte, []byte) (bool, error)
+	Fn([]byte, string) (bool, error)
 }
 
-func (cdb *ClaimDB) Iterate(iterFn ClaimDBIterFner) error { return cdb.IterateBytes(iterFn.Fn) }
+func (cdb *ClaimDB) IterateCredExistJSON(iterFn ClaimDBIterFner) error {
+	return cdb.IterateCredExistJSON_(iterFn.Fn)
+}
+
+func (cdb *ClaimDB) IterateClaimsJSON(iterFn ClaimDBIterFner) error {
+	return cdb.IterateClaimsJSON_(iterFn.Fn)
+}

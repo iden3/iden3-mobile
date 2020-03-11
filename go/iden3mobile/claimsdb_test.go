@@ -2,8 +2,10 @@ package iden3mobile
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
+	"github.com/iden3/go-iden3-core/common"
 	"github.com/iden3/go-iden3-core/core/proof"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/stretchr/testify/require"
@@ -81,4 +83,28 @@ func TestClaimDB(t *testing.T) {
 	var id232 [32]byte
 	copy(id232[:], id2)
 	require.Equal(t, &cred2, creds[id232])
+
+	credsJSON := make(map[[32]byte]string)
+	err = cdb.IterateCredExistJSON_(func(id []byte, cred string) (bool, error) {
+		var id32 [32]byte
+		copy(id32[:], id)
+		credsJSON[id32] = cred
+		return true, nil
+	})
+	require.Equal(t, 2, len(credsJSON))
+	for k, v := range credsJSON {
+		fmt.Printf("credJSON %v: %v\n", common.Hex(k[:]), v)
+	}
+
+	claimsJSON := make(map[[32]byte]string)
+	err = cdb.IterateClaimsJSON_(func(id []byte, claim string) (bool, error) {
+		var id32 [32]byte
+		copy(id32[:], id)
+		claimsJSON[id32] = claim
+		return true, nil
+	})
+	require.Equal(t, 2, len(claimsJSON))
+	for k, v := range claimsJSON {
+		fmt.Printf("claimsJSON %v: %v\n", common.Hex(k[:]), v)
+	}
 }
