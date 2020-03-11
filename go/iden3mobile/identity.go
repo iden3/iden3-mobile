@@ -24,11 +24,13 @@ type Identity struct {
 	ClaimDB     *ClaimDB
 	Tickets     *Tickets
 	stopTickets chan bool
-	eventQueue  chan Event
+	eventMan    *EventManager
 }
 
 const (
 	kOpStorKey           = "kOpComp"
+	eventsStorKey        = "eventsKey"
+	nextEventIdxKey      = "nextEventIdxKey"
 	storageSubPath       = "/idStore"
 	keyStorageSubPath    = "/idKeyStore"
 	smartContractAddress = "0xF6a014Ac66bcdc1BF51ac0fa68DF3f17f4b3e574"
@@ -96,6 +98,13 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	if err != nil {
 		return nil, err
 	}
+	em, err := NewEventManager(storage, nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := em.Init(); err != nil {
+		return nil, err
+	}
 	// Create new Identity (holder)
 	if _, err = holder.Create(
 		holder.ConfigDefault,
@@ -140,25 +149,32 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	if err != nil {
 		return nil, err
 	}
+	// Init event manager
+	eventQueue := make(chan Event, 10)
+	em, err := NewEventManager(storage, eventQueue)
+	if err != nil {
+		return nil, err
+	}
+	em.Start()
+
 	// Init Identity
 	iden := &Identity{
 		id:          holdr,
 		storage:     storage,
 		Tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
 		stopTickets: make(chan bool),
-		eventQueue:  make(chan Event, 10),
+		eventMan:    em,
 		ClaimDB:     NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
-	go iden.Tickets.CheckPending(iden, iden.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
+	go iden.Tickets.CheckPending(iden, em.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
 }
 
 // GetNextEvent returns the oldest event that has been generated.
 // Note that each event can only be retireved once.
 // Note that this function is blocking and potentially for a very long time.
-func (i *Identity) GetNextEvent() *Event {
-	ev := <-i.eventQueue
-	return &ev
+func (i *Identity) GetNextEvent() (*Event, error) {
+	return i.eventMan.GetNextEvent()
 }
 
 // Stop close all the open resources of the Identity
@@ -166,6 +182,7 @@ func (i *Identity) Stop() {
 	log.Info("Stopping identity: ", i.id.ID())
 	defer i.storage.Close()
 	i.stopTickets <- true
+	i.eventMan.Stop()
 }
 
 // RequestClaim sends a petition to issue a claim to an issuer.
