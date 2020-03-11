@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/iden3/go-iden3-core/components/httpclient"
 	"github.com/iden3/go-iden3-core/components/idenpuboffchain/readerhttp"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/identity/holder"
@@ -195,7 +194,7 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 		Type:   TicketTypeClaimReq,
 		Status: TicketStatusPending,
 	}
-	httpClient := httpclient.NewHttpClient(baseUrl)
+	httpClient := NewHttpClient(baseUrl)
 	res := issuerMsg.ResClaimRequest{}
 	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
 		"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
@@ -235,7 +234,7 @@ func (i *Identity) ProveClaim(baseUrl string, credId []byte) (bool, error) {
 		return false, err
 	}
 	// Send credential to verifier
-	httpClient := httpclient.NewHttpClient(baseUrl)
+	httpClient := NewHttpClient(baseUrl)
 	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
 		"verify").Post("").BodyJSON(verifierMsg.ReqVerify{
 		CredentialValidity: credVal,
