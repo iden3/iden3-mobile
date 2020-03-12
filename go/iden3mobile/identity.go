@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/iden3/go-iden3-core/components/idenpuboffchain/readerhttp"
+	"github.com/iden3/go-iden3-core/components/idenpubonchain"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/identity/holder"
 	"github.com/iden3/go-iden3-crypto/babyjub"
@@ -34,6 +36,8 @@ const (
 	keyStorageSubPath    = "/idKeyStore"
 	smartContractAddress = "0xF6a014Ac66bcdc1BF51ac0fa68DF3f17f4b3e574"
 	credExisPrefix       = "credExis"
+	folderStore          = "store"
+	folderKeyStore       = "keystore"
 )
 
 func isEmpty(path string) (bool, error) {
@@ -55,6 +59,15 @@ func isEmpty(path string) (bool, error) {
 // NOTE: The storePath must be unique per Identity.
 // NOTE: Right now the extraGenesisClaims is useless.
 func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
+	idenPubOnChain, err := loadIdenPubOnChain(web3Url)
+	if err != nil {
+		return nil, err
+	}
+	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims)
+}
+
+func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer,
+	checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
 	// Check that storePath points to an empty dir
 	if dirIsEmpty, err := isEmpty(storePath); !dirIsEmpty || err != nil {
 		if err == nil {
@@ -62,7 +75,19 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 		}
 		return nil, err
 	}
-	_, keyStore, storage, err := loadComponents(storePath, web3Url)
+	storagePath := path.Join(storePath, folderStore)
+	if err := os.Mkdir(storagePath, 0700); err != nil {
+		return nil, err
+	}
+	storage, err := loadStorage(storagePath)
+	if err != nil {
+		return nil, err
+	}
+	keyStoreStoragePath := path.Join(storePath, folderKeyStore)
+	if err := os.Mkdir(keyStoreStoragePath, 0700); err != nil {
+		return nil, err
+	}
+	keyStore, err := loadKeyStoreBabyJub(keyStoreStoragePath)
 	if err != nil {
 		return nil, err
 	}
@@ -123,14 +148,26 @@ func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, e
 	keyStore.Close()
 	storage.Close()
 	resourcesAreClosed = true
-	return NewIdentityLoad(storePath, pass, web3Url, checkTicketsPeriodMilis)
+	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis)
 }
 
 // NewIdentityLoad loads an already created identity
 // this funciton is mapped as a constructor in Java
 func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int) (*Identity, error) {
+	idenPubOnChain, err := loadIdenPubOnChain(web3Url)
+	if err != nil {
+		return nil, err
+	}
+	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis)
+}
+
+func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer, checkTicketsPeriodMilis int) (*Identity, error) {
 	// TODO: figure out how to diferentiate the two constructors from Java: https://github.com/iden3/iden3-mobile/issues/17#issuecomment-587374644
-	idenPubOnChain, keyStore, storage, err := loadComponents(storePath, web3Url)
+	storage, err := loadStorage(path.Join(storePath, folderStore))
+	if err != nil {
+		return nil, err
+	}
+	keyStore, err := loadKeyStoreBabyJub(path.Join(storePath, folderKeyStore))
 	if err != nil {
 		return nil, err
 	}

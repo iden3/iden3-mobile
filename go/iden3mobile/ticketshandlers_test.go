@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/iden3/go-iden3-core/core"
+	"github.com/iden3/go-iden3-core/merkletree"
+	"github.com/iden3/iden3-mobile/go/mockupserver"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -47,6 +50,25 @@ func holderEventHandler(ev *Event) {
 }
 
 func TestHolderHandlers(t *testing.T) {
+	// Start mockup server
+	go mockupserver.Serve(&mockupserver.Conf{
+		IP:                "127.0.0.1",
+		TimeToAproveClaim: time.Duration(1) * time.Second,
+		TimeToVerify:      time.Duration(1) * time.Second,
+	})
+	time.Sleep(1 * time.Second)
+
+	// Load test vector values into idenPubOnChain
+	id, err := core.IDFromString("114HNY4C7NrKMQ3XZ7GPLdaQqAQ2TjxgFtLEq312nf")
+	require.Nil(t, err)
+	var state merkletree.Hash
+	err = state.UnmarshalText([]byte("0xaaada0c31752c0e794b64cd65260d8d7506e3fe19ed7e0341cc925d1bb85530e"))
+	require.Nil(t, err)
+	timeNow = 1583931881
+	blockNow = 2326694
+	idenPubOnChain.InitState(&id, nil, &state, nil, nil, nil)
+	idenPubOnChain.Sync()
+
 	expectedEvents = make(map[string]event)
 	// Create two new identities without extra claims
 	dir1, err := ioutil.TempDir("", "holderTest1")
@@ -56,9 +78,9 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
-	id1, err := NewIdentity(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	id1, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
 	require.Nil(t, err)
-	id2, err := NewIdentity(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	id2, err := NewIdentityTest(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
 	require.Nil(t, err)
 	// Request claim
 	t1, err := id1.RequestClaim(c.IssuerUrl, id1.id.ID().String())
@@ -71,9 +93,9 @@ func TestHolderHandlers(t *testing.T) {
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
+	id1, err = NewIdentityTestLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
-	id2, err = NewIdentityLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
+	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
 	eventFromId = 1
