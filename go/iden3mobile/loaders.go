@@ -15,21 +15,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func loadComponents(storePath, web3Url string) (idenpubonchain.IdenPubOnChainer, *babykeystore.KeyStore, db.Storage, error) {
-	iPub, err := loadIdenPubOnChain(web3Url)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	storage, err := loadStorage(storePath)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	ks, err := loadKeyStoreBabyJub(storePath)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return iPub, ks, storage, nil
-}
+// func loadComponents(storePath, web3Url string) (idenpubonchain.IdenPubOnChainer, *babykeystore.KeyStore, db.Storage, error) {
+// 	iPub, err := loadIdenPubOnChain(web3Url)
+// 	if err != nil {
+// 		return nil, nil, nil, err
+// 	}
+// 	storage, err := loadStorage(storePath)
+// 	if err != nil {
+// 		return nil, nil, nil, err
+// 	}
+// 	ks, err := loadKeyStoreBabyJub(storePath)
+// 	if err != nil {
+// 		return nil, nil, nil, err
+// 	}
+// 	return iPub, ks, storage, nil
+// }
 
 func loadStorage(baseStorePath string) (db.Storage, error) {
 	storagePath := baseStorePath + storageSubPath

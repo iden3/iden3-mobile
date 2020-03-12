@@ -1,8 +1,7 @@
-package main
+package mockupserver
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -15,7 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type conf struct {
+type Conf struct {
 	IP                string
 	TimeToAproveClaim time.Duration
 	TimeToVerify      time.Duration
@@ -31,16 +30,10 @@ type pendingClaimsMap struct {
 	Map map[int]time.Time
 }
 
-var c = conf{}
-var claimCounter = counter{n: 1}
-
-func main() {
+func Serve(c *Conf) error {
 	// init
-	parseFlags()
-	if c.IP == "error" {
-		panic("IP flag is mandatory")
-	}
-	claimRes, credRes, pubDataRes := getMockup()
+	claimCounter := counter{n: 1}
+	claimRes, credRes, pubDataRes := getMockup(c)
 	pendingClaims := &pendingClaimsMap{Map: make(map[int]time.Time)}
 	// ISSUER ENDPOINTS
 
@@ -138,23 +131,12 @@ func main() {
 
 	fmt.Println("server running at", c.IP+":1234")
 	if err := http.ListenAndServe(":1234", nil); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func parseFlags() {
-	var ttac int
-	var ttv int
-	flag.IntVar(&ttac, "aprovetime", 60, "Time that takes to aprove a claim request(in seconds)")
-	flag.IntVar(&ttv, "verifytime", 60, "Time that takes to verify a claim (in seconds)")
-	flag.StringVar(&c.IP, "ip", "error", "IP of the machine where this software will run")
-
-	flag.Parse()
-	c.TimeToAproveClaim = time.Duration(ttac) * time.Second
-	c.TimeToVerify = time.Duration(ttv) * time.Second
-}
-
-func getMockup() (string, string, string) {
+func getMockup(c *Conf) (string, string, string) {
 	pubDataUrl := "http://" + c.IP + ":1234/idenpublicdata/"
 	const claimRes = `{"status":"approved","claim":"0x00000000000000000000000035623166343339333433356366623862376331003537383164613230313837633661393966363033373638303364643933393000613864323961613765623031626638366531366462636161663366643365000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"}`
 	credRes := `{"status":"ready","credential":{"Id":"114HNY4C7NrKMQ3XZ7GPLdaQqAQ2TjxgFtLEq312nf","IdenStateData":{"BlockTs":1583931881,"BlockN":2326694,"IdenState":"0xaaada0c31752c0e794b64cd65260d8d7506e3fe19ed7e0341cc925d1bb85530e"},"MtpClaim":"0x0001000000000000000000000000000000000000000000000000000000000001693a465c114dfe2f02256694c51c5b965b99368d8530f060f020ef5cbad8d81f","Claim":"0x00000000000000000000000035623166343339333433356366623862376331003537383164613230313837633661393966363033373638303364643933393000613864323961613765623031626638366531366462636161663366643365000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","RevocationsTreeRoot":"0x0000000000000000000000000000000000000000000000000000000000000000","RootsTreeRoot":"0x85a7890b63cad6b8ab3b0e3f81de58ccf13a71a716a9c4bb119ea9c341031529","IdenPubUrl":"` + pubDataUrl + `"}}`
