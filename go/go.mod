@@ -3,7 +3,6 @@ module github.com/iden3/iden3-mobile/go
 go 1.13
 
 require (
-	github.com/BurntSushi/toml v0.3.1
 	github.com/VictoriaMetrics/fastcache v1.5.7 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20200214154357-2151774b0d85 // indirect
 	github.com/btcsuite/btcutil v1.0.1 // indirect
@@ -17,13 +16,13 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/iden3/go-iden3-core v0.0.7-0.20200311112557-02d96bb16b0f
 	github.com/iden3/go-iden3-crypto v0.0.3
-	github.com/iden3/go-iden3-servers-demo v0.0.0-20200222110233-acd5cba4952c
+	github.com/iden3/go-iden3-servers-demo v0.0.0-20200309110641-43ad8a65375f
 	github.com/ipfs/go-log v1.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/libp2p/go-conn-security v0.1.0 // indirect
-	github.com/libp2p/go-libp2p v6.0.23+incompatible
+	github.com/libp2p/go-libp2p v6.0.23+incompatible // indirect
 	github.com/libp2p/go-libp2p-circuit v0.1.4 // indirect
 	github.com/libp2p/go-libp2p-host v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-interface-connmgr v0.1.0 // indirect
@@ -54,7 +53,6 @@ require (
 	golang.org/x/mobile v0.0.0-20200123024942-82c397c4c527 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
-	gopkg.in/go-playground/assert.v1 v1.2.1
 	gopkg.in/go-playground/validator.v9 v9.29.1
 	gopkg.in/yaml.v2 v2.2.4
 )
