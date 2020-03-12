@@ -253,6 +253,8 @@ github.com/iden3/go-iden3-servers-demo v0.0.0-20200221114214-c2fb4438638d h1:Nq0
 github.com/iden3/go-iden3-servers-demo v0.0.0-20200222110233-acd5cba4952c h1:jKn6A0jDHROrFblpa7jEiX5kieZGgNGlQYEi0Q+lZVg=
 github.com/iden3/go-iden3-servers-demo v0.0.0-20200222110233-acd5cba4952c/go.mod h1:FBhTGxbyQIy+nyiNNV66Hri0NEOXIYZDnbOon39IaKo=
 github.com/iden3/go-iden3-servers-demo v0.0.0-20200302110205-b9e90017fb09 h1:9H0+86l3jiRhX0fLHq9aMhNCW2p0Ruw783I5SUEa0jg=
+github.com/iden3/go-iden3-servers-demo v0.0.0-20200309110641-43ad8a65375f h1:vT40UbHNOIT8oKO1o4oNEO5EA9WJDwVeD/mvLiN2eFc=
+github.com/iden3/go-iden3-servers-demo v0.0.0-20200309110641-43ad8a65375f/go.mod h1:FBhTGxbyQIy+nyiNNV66Hri0NEOXIYZDnbOon39IaKo=
 github.com/iden3/go-public-key-encryption v0.0.0-20200129111956-c21e08c0ca6d/go.mod h1:ywEbbcgoETcOzZQ7YedY67DfG8tPuHbH89yn0zhjjeU=
 github.com/iden3/iden3-mobile v0.0.0-20191127154806-c4cb71016c2c h1:r4UQBNQXViT+0DzVk6rrhrLd47jjmmEc+7g9B9d8z0I=
 github.com/iden3/iden3-mobile v0.0.0-20200304104952-868f15829d6f h1:Zh4JwxjanaWPYlHzdBOni4n7wFNRSdyvhdCByyliKHI=
