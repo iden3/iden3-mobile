@@ -16,13 +16,13 @@ type reqClaimHandler struct {
 	Id      int
 	BaseUrl string
 	Claim   *merkletree.Entry
-	DBkey   []byte
+	CredID  string
 	Status  string
 }
 
 type eventReqClaim struct {
-	Claim *merkletree.Entry
-	DBkey []byte
+	Claim  *merkletree.Entry
+	CredID string
 }
 
 func (h *reqClaimHandler) isDone(id *Identity) (bool, string, error) {
@@ -49,8 +49,8 @@ func (h *reqClaimHandler) checkClaimStatus(id *Identity) (bool, string, error) {
 		return false, "", nil
 	case issuerMsg.RequestStatusRejected:
 		event := eventReqClaim{
-			Claim: nil,
-			DBkey: nil,
+			Claim:  nil,
+			CredID: "",
 		}
 		j, err := json.Marshal(event)
 		if err != nil {
@@ -89,7 +89,7 @@ func (h *reqClaimHandler) checkClaimCredential(id *Identity) (bool, string, erro
 			return true, "{}", err
 		}
 		// Add credential to the identity
-		dbKey, err := id.ClaimDB.AddCredentialExistance(res.Credential)
+		credID, err := id.ClaimDB.AddCredentialExistance(res.Credential)
 		if err != nil {
 			log.Error("Error storing credential existance", err)
 			return true, "{}", err
@@ -97,8 +97,8 @@ func (h *reqClaimHandler) checkClaimCredential(id *Identity) (bool, string, erro
 		// Send event with success
 		h.Status = string(issuerMsg.ClaimtStatusReady)
 		j, err := json.Marshal(eventReqClaim{
-			Claim: h.Claim,
-			DBkey: dbKey,
+			Claim:  h.Claim,
+			CredID: credID,
 		})
 		if err != nil {
 			return true, "{}", err

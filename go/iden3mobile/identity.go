@@ -258,10 +258,10 @@ func (i *Identity) RequestClaimWithCb(baseUrl, data string, c CallbackRequestCla
 
 // ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier
 // the callback is used to check if the verifier has accepted the credential as valid
-func (i *Identity) ProveClaim(baseUrl string, credId []byte) (bool, error) {
+func (i *Identity) ProveClaim(baseUrl string, credID string) (bool, error) {
 	// TODO: add context
 	// Get credential existance
-	credExis, err := i.ClaimDB.GetReceivedCredential(credId)
+	credExis, err := i.ClaimDB.GetCredExist(credID)
 	if err != nil {
 		return false, err
 	}
@@ -287,6 +287,6 @@ type CallbackProveClaim interface {
 	Fn(bool, error)
 }
 
-func (i *Identity) ProveClaimWithCb(baseUrl string, credId []byte, c CallbackProveClaim) {
-	go func() { c.Fn(i.ProveClaim(baseUrl, credId)) }()
+func (i *Identity) ProveClaimWithCb(baseUrl string, credID string, c CallbackProveClaim) {
+	go func() { c.Fn(i.ProveClaim(baseUrl, credID)) }()
 }

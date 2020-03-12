@@ -59,50 +59,42 @@ func TestClaimDB(t *testing.T) {
 	id2, err := cdb.AddCredentialExistance(&cred2)
 	require.Nil(t, err)
 
-	cred1Cpy, err := cdb.GetReceivedCredential(id1)
+	cred1Cpy, err := cdb.GetCredExist(id1)
 	require.Nil(t, err)
 	require.Equal(t, cred1.Id, cred1Cpy.Id)
 	require.Equal(t, cred1.Claim.Data, cred1Cpy.Claim.Data)
 
-	cred2Cpy, err := cdb.GetReceivedCredential(id2)
+	cred2Cpy, err := cdb.GetCredExist(id2)
 	require.Nil(t, err)
 	require.Equal(t, cred2.Id, cred2Cpy.Id)
 	require.Equal(t, cred2.Claim.Data, cred2Cpy.Claim.Data)
 
-	creds := make(map[[32]byte]*proof.CredentialExistence)
-	err = cdb.Iterate_(func(id []byte, cred *proof.CredentialExistence) (bool, error) {
-		var id32 [32]byte
-		copy(id32[:], id)
-		creds[id32] = cred
+	creds := make(map[string]*proof.CredentialExistence)
+	err = cdb.Iterate_(func(id string, cred *proof.CredentialExistence) (bool, error) {
+		creds[id] = cred
 		return true, nil
 	})
 	require.Nil(t, err)
-	var id132 [32]byte
-	copy(id132[:], id1)
-	require.Equal(t, &cred1, creds[id132])
-	var id232 [32]byte
-	copy(id232[:], id2)
-	require.Equal(t, &cred2, creds[id232])
+	require.Equal(t, &cred1, creds[id1])
+	require.Equal(t, &cred2, creds[id2])
 
-	credsJSON := make(map[[32]byte]string)
-	err = cdb.IterateCredExistJSON_(func(id []byte, cred string) (bool, error) {
-		var id32 [32]byte
-		copy(id32[:], id)
-		credsJSON[id32] = cred
+	credsJSON := make(map[string]string)
+	err = cdb.IterateCredExistJSON_(func(id string, cred string) (bool, error) {
+		credsJSON[id] = cred
 		return true, nil
 	})
+	require.Nil(t, err)
 	require.Equal(t, 2, len(credsJSON))
 	for k, v := range credsJSON {
 		fmt.Printf("credJSON %v: %v\n", common.Hex(k[:]), v)
 	}
 
-	claimsJSON := make(map[[32]byte]string)
-	err = cdb.IterateClaimsJSON_(func(id []byte, claim string) (bool, error) {
-		var id32 [32]byte
-		copy(id32[:], id)
-		claimsJSON[id32] = claim
+	claimsJSON := make(map[string]string)
+	err = cdb.IterateClaimsJSON_(func(id string, claim string) (bool, error) {
+		claimsJSON[id] = claim
 		return true, nil
 	})
+	require.Nil(t, err)
 	require.Equal(t, 2, len(claimsJSON))
 	for k, v := range claimsJSON {
 		fmt.Printf("claimsJSON %v: %v\n", common.Hex(k[:]), v)
