@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var id1ClaimID [32]byte
-var id2ClaimID [32]byte
+var id1ClaimID string
+var id2ClaimID string
 var eventFromId = 0
 
 func holderEventHandler(ev *Event) {
@@ -37,9 +37,9 @@ func holderEventHandler(ev *Event) {
 			panic(err)
 		}
 		if eventFromId == 1 {
-			copy(id1ClaimID[:], d.DBkey)
+			id1ClaimID = d.CredID
 		} else if eventFromId == 2 {
-			copy(id2ClaimID[:], d.DBkey)
+			id2ClaimID = d.CredID
 		} else {
 			panic("Event from unexpected identity")
 		}
@@ -51,11 +51,14 @@ func holderEventHandler(ev *Event) {
 
 func TestHolderHandlers(t *testing.T) {
 	// Start mockup server
-	go mockupserver.Serve(&mockupserver.Conf{
-		IP:                "127.0.0.1",
-		TimeToAproveClaim: time.Duration(1) * time.Second,
-		TimeToVerify:      time.Duration(1) * time.Second,
-	})
+	go func() {
+		err := mockupserver.Serve(&mockupserver.Conf{
+			IP:                "127.0.0.1",
+			TimeToAproveClaim: time.Duration(1) * time.Second,
+			TimeToVerify:      time.Duration(1) * time.Second,
+		})
+		require.Nil(t, err)
+	}()
 	time.Sleep(1 * time.Second)
 
 	// Load test vector values into idenPubOnChain
@@ -66,7 +69,8 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	timeNow = 1583931881
 	blockNow = 2326694
-	idenPubOnChain.InitState(&id, nil, &state, nil, nil, nil)
+	_, err = idenPubOnChain.InitState(&id, nil, &state, nil, nil, nil)
+	require.Nil(t, err)
 	idenPubOnChain.Sync()
 
 	expectedEvents = make(map[string]event)
