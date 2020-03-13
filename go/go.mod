@@ -11,11 +11,13 @@ require (
 	github.com/elastic/gosigar v0.10.5 // indirect
 	github.com/ethereum/go-ethereum v1.9.11
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
+	github.com/gin-gonic/gin v1.5.0
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/iden3/go-iden3-core v0.0.7-0.20200311112557-02d96bb16b0f
 	github.com/iden3/go-iden3-crypto v0.0.3
+	github.com/iden3/go-iden3-servers v0.0.0-20200219150204-1856e87ce0d8
 	github.com/iden3/go-iden3-servers-demo v0.0.0-20200309110641-43ad8a65375f
 	github.com/ipfs/go-log v1.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect

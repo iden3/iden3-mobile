@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iden3/go-iden3-core/core"
-	"github.com/iden3/go-iden3-core/merkletree"
 	"github.com/iden3/iden3-mobile/go/mockupserver"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -50,28 +48,30 @@ func holderEventHandler(ev *Event) {
 }
 
 func TestHolderHandlers(t *testing.T) {
+	// Sync idenPubOnChain every 2 seconds
+	go func() {
+		for {
+			log.Info("idenPubOnChain.Sync()")
+			timeNow += 10
+			blockNow += 1
+			idenPubOnChain.Sync()
+			time.Sleep(2 * time.Second)
+		}
+	}()
+
 	// Start mockup server
 	go func() {
-		err := mockupserver.Serve(&mockupserver.Conf{
+		err := mockupserver.Serve(t, &mockupserver.Conf{
 			IP:                "127.0.0.1",
-			TimeToAproveClaim: time.Duration(1) * time.Second,
-			TimeToVerify:      time.Duration(1) * time.Second,
-		})
+			Port:              "1234",
+			TimeToAproveClaim: 1 * time.Second,
+			TimeToPublish:     2 * time.Second,
+		},
+			idenPubOnChain,
+		)
 		require.Nil(t, err)
 	}()
 	time.Sleep(1 * time.Second)
-
-	// Load test vector values into idenPubOnChain
-	id, err := core.IDFromString("114HNY4C7NrKMQ3XZ7GPLdaQqAQ2TjxgFtLEq312nf")
-	require.Nil(t, err)
-	var state merkletree.Hash
-	err = state.UnmarshalText([]byte("0xaaada0c31752c0e794b64cd65260d8d7506e3fe19ed7e0341cc925d1bb85530e"))
-	require.Nil(t, err)
-	timeNow = 1583931881
-	blockNow = 2326694
-	_, err = idenPubOnChain.InitState(&id, nil, &state, nil, nil, nil)
-	require.Nil(t, err)
-	idenPubOnChain.Sync()
 
 	expectedEvents = make(map[string]event)
 	// Create two new identities without extra claims
