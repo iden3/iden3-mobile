@@ -69,6 +69,10 @@ func TestClaimDB(t *testing.T) {
 	require.Equal(t, cred2.Id, cred2Cpy.Id)
 	require.Equal(t, cred2.Claim.Data, cred2Cpy.Claim.Data)
 
+	credNoExist, err := cdb.GetCredExist("")
+	require.Error(t, err)
+	require.Nil(t, credNoExist)
+
 	creds := make(map[string]*proof.CredentialExistence)
 	err = cdb.Iterate_(func(id string, cred *proof.CredentialExistence) (bool, error) {
 		creds[id] = cred
