@@ -134,7 +134,7 @@ func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChain
 		for {
 			err := is.PublishState()
 			if err != nil {
-				log.WithError(err).Error("Issuer.PublishState()")
+				log.WithError(err).Warn("Issuer.PublishState()")
 			}
 			err = is.SyncIdenStatePublic()
 			if err != nil {
