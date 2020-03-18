@@ -3,6 +3,7 @@ package iden3mobile
 import (
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,8 +23,50 @@ type config struct {
 var c config
 var rmDirs []string
 var idenPubOnChain *idenpubonchainlocal.IdenPubOnChain
-var timeNow int64
-var blockNow uint64
+
+type TimeBlock struct {
+	timeNow  int64
+	blockNow uint64
+	rw       sync.RWMutex
+}
+
+func (tb *TimeBlock) SetTime(t int64) {
+	tb.rw.Lock()
+	defer tb.rw.Unlock()
+	tb.timeNow = t
+}
+
+func (tb *TimeBlock) SetBlock(n uint64) {
+	tb.rw.Lock()
+	defer tb.rw.Unlock()
+	tb.blockNow = n
+}
+
+func (tb *TimeBlock) AddTime(t int64) {
+	tb.rw.Lock()
+	defer tb.rw.Unlock()
+	tb.timeNow += t
+}
+
+func (tb *TimeBlock) AddBlock(n uint64) {
+	tb.rw.Lock()
+	defer tb.rw.Unlock()
+	tb.blockNow += n
+}
+
+func (tb *TimeBlock) Time() time.Time {
+	tb.rw.RLock()
+	defer tb.rw.RUnlock()
+	return time.Unix(tb.timeNow, 0)
+}
+
+func (tb *TimeBlock) Block() uint64 {
+	tb.rw.RLock()
+	defer tb.rw.RUnlock()
+	return tb.blockNow
+}
+
+var timeBlock TimeBlock
 
 func TestMain(m *testing.M) {
 	// Load config file
@@ -43,8 +86,8 @@ func TestMain(m *testing.M) {
 		HolderTicketPeriod:  1000,
 	}
 	idenPubOnChain = idenpubonchainlocal.New(
-		func() time.Time { return time.Unix(timeNow, 0) },
-		func() uint64 { return blockNow },
+		timeBlock.Time,
+		timeBlock.Block,
 	)
 	// Create a tmp directory to store test files
 	// Run tests

@@ -7,6 +7,13 @@ go:
 env:
   - GO111MODULE=on
 
+jobs:
+  include:
+    - name: "Unit Tests"
+      env: FLAGS=""
+    - name: "Unit Test + Race detection"
+      env: FLAGS="-race"
+
 script:
   - cd go/iden3mobile
-  - go test -v -count=1 ./...
+  - go test -v -count=1 $FLAGS ./...

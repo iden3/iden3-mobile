@@ -2,6 +2,7 @@ package mockupserver
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"testing"
@@ -119,7 +120,7 @@ func NewIssuer(t *testing.T, idenPubOnChain idenpubonchain.IdenPubOnChainer,
 	return is
 }
 
-func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChainer) error {
+func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChainer) *http.Server {
 	idenPubOffChainWrite, err := idenpuboffchainwriterhttp.NewIdenPubOffChainWriteHttp(
 		idenpuboffchainwriterhttp.NewConfigDefault(fmt.Sprintf("http://%v:%v/idenpublicdata/", cfg.IP, cfg.Port)),
 		db.NewMemoryStorage(),
@@ -134,7 +135,7 @@ func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChain
 		for {
 			err := is.PublishState()
 			if err != nil {
-				log.WithError(err).Error("Issuer.PublishState()")
+				log.WithError(err).Warn("Issuer.PublishState()")
 			}
 			err = is.SyncIdenStatePublic()
 			if err != nil {
@@ -274,9 +275,43 @@ func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChain
 	})
 
 	server := &http.Server{Addr: fmt.Sprintf("%v:%v", cfg.IP, cfg.Port), Handler: api}
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("listen: %s\n", err)
-	}
 
-	return nil
+	go func() {
+		if err := ListenAndServe(server, "Service"); err != nil &&
+			err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+	return server
+}
+
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (net.Conn, error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return nil, err
+	}
+	if err := tc.SetKeepAlive(true); err != nil {
+		return nil, err
+	}
+	if err := tc.SetKeepAlivePeriod(3 * time.Minute); err != nil {
+		return nil, err
+	}
+	return tc, nil
+}
+
+func ListenAndServe(srv *http.Server, name string) error {
+	addr := srv.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	log.Infof("%s API is ready at %v", name, addr)
+	return srv.Serve(tcpKeepAliveListener{ln.(*net.TCPListener)})
 }

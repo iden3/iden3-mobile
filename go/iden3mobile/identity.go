@@ -13,6 +13,7 @@ import (
 	"github.com/iden3/go-iden3-core/components/idenpubonchain"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/identity/holder"
+	babykeystore "github.com/iden3/go-iden3-core/keystore"
 	"github.com/iden3/go-iden3-crypto/babyjub"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	verifierMsg "github.com/iden3/go-iden3-servers-demo/servers/verifier/messages"
@@ -22,6 +23,7 @@ import (
 type Identity struct {
 	id          *holder.Holder
 	storage     db.Storage
+	keyStore    *babykeystore.KeyStore
 	ClaimDB     *ClaimDB
 	Tickets     *Tickets
 	stopTickets chan bool
@@ -94,7 +96,9 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 	resourcesAreClosed := false
 	defer func() {
 		if !resourcesAreClosed {
-			keyStore.Close()
+			if err := keyStore.Close(); err != nil {
+				log.WithError(err).Error("keyStore.Close()")
+			}
 			storage.Close()
 		}
 	}()
@@ -145,7 +149,9 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 		return nil, err
 	}
 	// Verify that the Identity can be loaded successfully
-	keyStore.Close()
+	if err := keyStore.Close(); err != nil {
+		log.WithError(err).Error("keyStore.Close()")
+	}
 	storage.Close()
 	resourcesAreClosed = true
 	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis)
@@ -171,7 +177,6 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 	if err != nil {
 		return nil, err
 	}
-	defer keyStore.Close()
 	// Unlock key store
 	kOpComp := &babyjub.PublicKeyComp{}
 	if err := db.LoadJSON(storage, []byte(kOpStorKey), kOpComp); err != nil {
@@ -197,6 +202,7 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 	iden := &Identity{
 		id:          holdr,
 		storage:     storage,
+		keyStore:    keyStore,
 		Tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
 		stopTickets: make(chan bool),
 		eventMan:    em,
@@ -217,6 +223,7 @@ func (i *Identity) GetNextEvent() (*Event, error) {
 func (i *Identity) Stop() {
 	log.Info("Stopping identity: ", i.id.ID())
 	defer i.storage.Close()
+	defer i.keyStore.Close()
 	i.stopTickets <- true
 	i.eventMan.Stop()
 }
