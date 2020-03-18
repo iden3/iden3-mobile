@@ -15,10 +15,10 @@ require (
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/iden3/go-iden3-core v0.0.7-0.20200317112119-d48b3bad8bf7
-	github.com/iden3/go-iden3-crypto v0.0.3
-	github.com/iden3/go-iden3-servers v0.0.0-20200219150204-1856e87ce0d8
-	github.com/iden3/go-iden3-servers-demo v0.0.0-20200309110641-43ad8a65375f
+	github.com/iden3/go-iden3-core v0.0.7
+	github.com/iden3/go-iden3-crypto v0.0.4
+	github.com/iden3/go-iden3-servers v0.0.1
+	github.com/iden3/go-iden3-servers-demo v0.0.1
 	github.com/ipfs/go-log v1.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
@@ -58,3 +58,5 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.29.1
 	gopkg.in/yaml.v2 v2.2.4
 )
+
+// replace github.com/iden3/go-iden3-core => ../../go-iden3-core
