@@ -1,12 +1,16 @@
 package iden3mobile
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
+	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -58,25 +62,22 @@ func TestHolderHandlers(t *testing.T) {
 	go func() {
 		for {
 			log.Info("idenPubOnChain.Sync()")
-			timeNow += 10
-			blockNow += 1
+			timeBlock.AddTime(10)
+			timeBlock.AddBlock(1)
 			idenPubOnChain.Sync()
 			time.Sleep(2 * time.Second)
 		}
 	}()
 
 	// Start mockup server
-	go func() {
-		err := mockupserver.Serve(t, &mockupserver.Conf{
-			IP:                "127.0.0.1",
-			Port:              "1234",
-			TimeToAproveClaim: 1 * time.Second,
-			TimeToPublish:     2 * time.Second,
-		},
-			idenPubOnChain,
-		)
-		require.Nil(t, err)
-	}()
+	server := mockupserver.Serve(t, &mockupserver.Conf{
+		IP:                "127.0.0.1",
+		Port:              "1234",
+		TimeToAproveClaim: 1 * time.Second,
+		TimeToPublish:     2 * time.Second,
+	},
+		idenPubOnChain,
+	)
 	time.Sleep(1 * time.Second)
 
 	expectedEvents = make(map[string]event)
@@ -137,11 +138,17 @@ func TestHolderHandlers(t *testing.T) {
 	}
 	id1.Stop()
 	id2.Stop()
+
+	err = server.Shutdown(context.Background())
+	require.Nil(t, err)
 }
 
 func randomBase64String(l int) string {
 	buff := make([]byte, int(math.Round(float64(l)/float64(1.33333333333))))
-	rand.Read(buff)
+	_, err := rand.Read(buff)
+	if err != nil {
+		panic(err)
+	}
 	str := base64.RawURLEncoding.EncodeToString(buff)
 	return str[:l] // strip 1 extra character we get from odd length results
 }
@@ -151,43 +158,60 @@ func TestStressIdentity(t *testing.T) {
 	go func() {
 		for {
 			log.Info("idenPubOnChain.Sync()")
-			timeNow += 10
-			blockNow += 1
+			timeBlock.AddTime(10)
+			timeBlock.AddBlock(1)
 			idenPubOnChain.Sync()
-			time.Sleep(2 * time.Second)
+			time.Sleep(700 * time.Millisecond)
 		}
 	}()
 
 	n := 16
 	m := 4
 
+	if val := os.Getenv("N"); val != "" {
+		_n, err := strconv.ParseInt(val, 10, 0)
+		n = int(_n)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if val := os.Getenv("M"); val != "" {
+		_m, err := strconv.ParseInt(val, 10, 0)
+		m = int(_m)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	log.WithField("n", n).WithField("m", m).Info("-- Stress Identity")
+
 	// Start mockup servers
+	servers := make([]*http.Server, n)
 	for i := 0; i < n; i++ {
-		go func() {
-			err := mockupserver.Serve(t, &mockupserver.Conf{
-				IP:                "127.0.0.1",
-				Port:              fmt.Sprintf("9%03d", i),
-				TimeToAproveClaim: 1 * time.Second,
-				TimeToPublish:     2 * time.Second,
-			},
-				idenPubOnChain,
-			)
-			require.Nil(t, err)
-		}()
+		servers[i] = mockupserver.Serve(t, &mockupserver.Conf{
+			IP:                "127.0.0.1",
+			Port:              fmt.Sprintf("9%03d", i),
+			TimeToAproveClaim: 1 * time.Second,
+			TimeToPublish:     500 * time.Millisecond,
+		},
+			idenPubOnChain,
+		)
 		time.Sleep(200 * time.Millisecond)
 	}
 
 	dir1, err := ioutil.TempDir("", "holderStressTest")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir1)
-	iden, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	iden, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, 400, NewBytesArray())
 	require.Nil(t, err)
 
 	// Request claims
 	tickets := make(map[string]*Ticket)
 	mutex := sync.Mutex{}
-	for i := 0; i < n; i++ {
-		for j := 0; j < m; j++ {
+	for _i := 0; _i < n; _i++ {
+		i := _i
+		for _j := 0; _j < m; _j++ {
+			j := _j
 			go func() {
 				t1, err := iden.RequestClaim(fmt.Sprintf("http://127.0.0.1:9%03d/", i), randomBase64String(80))
 				require.Nil(t, err)
@@ -228,17 +252,19 @@ func TestStressIdentity(t *testing.T) {
 	}
 
 	claimIds := make([]string, 0)
-	iden.ClaimDB.Iterate_(func(id string, _ *proof.CredentialExistence) (bool, error) {
+	err = iden.ClaimDB.Iterate_(func(id string, _ *proof.CredentialExistence) (bool, error) {
 		claimIds = append(claimIds, id)
 		return true, nil
 	})
+	require.Nil(t, err)
 
 	require.Equal(t, claimsLen, len(claimIds))
 
 	// Prove claim
 	var wg sync.WaitGroup
-	for k, id := range claimIds {
+	for k, _id := range claimIds {
 		wg.Add(1)
+		id := _id
 		go func() {
 			i := 0
 			for ; i < c.VerifierAttempts; i++ {
@@ -250,16 +276,21 @@ func TestStressIdentity(t *testing.T) {
 					wg.Done()
 					break
 				}
-				time.Sleep(time.Duration(c.VerifierRetryPeriod) * time.Second)
+				time.Sleep(time.Duration(400 * time.Millisecond))
 			}
 			if i == c.VerifierAttempts {
 				panic(fmt.Errorf("Reached maximum number of loops for iden.ProveClaim"))
 			}
 		}()
-		if k >= 8 {
+		if k >= 16 {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}
 	wg.Wait()
 	iden.Stop()
+
+	for _, server := range servers {
+		err = server.Shutdown(context.Background())
+		require.Nil(t, err)
+	}
 }
