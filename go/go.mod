@@ -7,7 +7,6 @@ require (
 	github.com/aristanetworks/goarista v0.0.0-20200214154357-2151774b0d85 // indirect
 	github.com/btcsuite/btcutil v1.0.1 // indirect
 	github.com/dghubble/sling v1.3.0
-	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/elastic/gosigar v0.10.5 // indirect
 	github.com/ethereum/go-ethereum v1.9.11
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
@@ -37,16 +36,19 @@ require (
 	github.com/libp2p/go-libp2p-transport v0.1.0 // indirect
 	github.com/libp2p/go-stream-muxer v0.1.0 // indirect
 	github.com/libp2p/go-ws-transport v0.2.0 // indirect
+	github.com/matiasinsaurralde/go-wasm3 v0.0.0-20200128085533-b1db135efa90
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.2.0 // indirect
 	github.com/multiformats/go-multistream v0.1.1 // indirect
 	github.com/olekukonko/tablewriter v0.0.4 // indirect
+	github.com/perlin-network/life v0.0.0-20191203030451-05c0e0f7eaea
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/tsdb v0.10.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/status-im/keycard-go v0.0.0-20200107115650-f38e9a19958e // indirect
 	github.com/stretchr/testify v1.4.0
+	github.com/wasmerio/go-ext-wasm v0.3.1
 	github.com/whyrusleeping/go-smux-multiplex v3.0.16+incompatible // indirect
 	github.com/whyrusleeping/go-smux-multistream v2.0.2+incompatible // indirect
 	github.com/whyrusleeping/go-smux-yamux v2.0.9+incompatible // indirect
