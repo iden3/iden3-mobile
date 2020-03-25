@@ -1,6 +1,9 @@
 dist: xenial
 language: go
 
+services:
+  - docker
+
 go:
   - "1.13"
 
@@ -13,7 +16,20 @@ jobs:
       env: FLAGS=""
     - name: "Unit Test + Race detection"
       env: FLAGS="-race"
+    - name: "gomobile build"
+      script:
+      - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      - sudo apt-get update
+      - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
+      - docker pull ed255/gomobile-android
+      - docker run -it \
+          --mount type=bind,source=$PWD,target=/root/iden3-mobile,readonly \
+          ed255/gomobile-android \
+          /bin/bash -c 'cd /root/iden3-mobile/go/iden3mobile && gomobile bind --target android -o /tmp/iden3mobile.aar'
+
 
 script:
-  - cd go/iden3mobile
+  - pushd go/iden3mobile
   - go test -v -count=1 $FLAGS ./...
+  - popd
