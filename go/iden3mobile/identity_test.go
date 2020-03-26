@@ -8,6 +8,7 @@ import (
 	"time"
 
 	idenpubonchainlocal "github.com/iden3/go-iden3-core/components/idenpubonchain/local"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -99,14 +100,26 @@ func TestMain(m *testing.M) {
 	os.Exit(result)
 }
 
+type testEventHandler struct{}
+
+func (teh *testEventHandler) Send(ev *Event) {
+	log.Info("Event received: ", ev.TicketId)
+}
+
 // NewIdentityTest is like NewIdentity but uses a local implementation of the smart contract in idenPubOnChain
-func NewIdentityTest(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
-	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims)
+func NewIdentityTest(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, s Sender) (*Identity, error) {
+	if s == nil {
+		s = &testEventHandler{}
+	}
+	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, s)
 }
 
 // NewIdentityTestLoad is like NewIdentityLoad but uses a local implementation of the smart contract in idenPubOnChain
-func NewIdentityTestLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int) (*Identity, error) {
-	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis)
+func NewIdentityTestLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int, s Sender) (*Identity, error) {
+	if s == nil {
+		s = &testEventHandler{}
+	}
+	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, s)
 }
 
 func TestNewIdentity(t *testing.T) {
@@ -114,15 +127,15 @@ func TestNewIdentity(t *testing.T) {
 	dir1, err := ioutil.TempDir("", "identityTest")
 	rmDirs = append(rmDirs, dir1)
 	require.Nil(t, err)
-	id, err := NewIdentityTest(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	id, err := NewIdentityTest(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
 	// Error when creating new identity on a non empty dir
-	_, err = NewIdentityTest(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	_, err = NewIdentityTest(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Error(t, err)
 	// Load identity
-	id, err = NewIdentityTestLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod)
+	id, err = NewIdentityTestLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()

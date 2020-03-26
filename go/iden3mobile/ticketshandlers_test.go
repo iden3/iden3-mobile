@@ -80,7 +80,7 @@ func TestHolderHandlers(t *testing.T) {
 	)
 	time.Sleep(1 * time.Second)
 
-	expectedEvents = make(map[string]event)
+	expectedEvents = make(map[string]testEvent)
 	// Create two new identities without extra claims
 	dir1, err := ioutil.TempDir("", "holderTest1")
 	require.Nil(t, err)
@@ -89,34 +89,32 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
-	id1, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	id1, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
-	id2, err := NewIdentityTest(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray())
+	id2, err := NewIdentityTest(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Request claim
 	t1, err := id1.RequestClaim(c.IssuerUrl, id1.id.ID().String())
 	require.Nil(t, err)
-	expectedEvents[t1.Id] = event{Typ: t1.Type}
+	expectedEvents[t1.Id] = testEvent{Typ: t1.Type}
 
 	t2, err := id2.RequestClaim(c.IssuerUrl, id2.id.ID().String())
 	require.Nil(t, err)
-	expectedEvents[t2.Id] = event{Typ: t2.Type}
+	expectedEvents[t2.Id] = testEvent{Typ: t2.Type}
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityTestLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
+	id1, err = NewIdentityTestLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
-	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
+	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
+	nAtempts := 6
+	period := time.Duration(c.HolderTicketPeriod) * time.Millisecond
 	eventFromId = 1
-	ev1, err := id1.GetNextEvent()
-	require.Nil(t, err)
-	holderEventHandler(ev1) // Wait until the issuer response produce event
+	holderEventHandler(testGetEventWithTimeOut(id1.eventMan, 0, nAtempts, period))
 	eventFromId = 2
-	ev2, err := id2.GetNextEvent()
-	holderEventHandler(ev2) // Wait until the issuer response produce event
-	require.Nil(t, err)
+	holderEventHandler(testGetEventWithTimeOut(id2.eventMan, 0, nAtempts, period))
 	// Prove claim
 	i := 0
 	for ; i < c.VerifierAttempts; i++ {
@@ -151,6 +149,23 @@ func randomBase64String(l int) string {
 	}
 	str := base64.RawURLEncoding.EncodeToString(buff)
 	return str[:l] // strip 1 extra character we get from odd length results
+}
+
+type testStressIdentityEventHandler struct {
+	tickets map[string]*Ticket
+	m       *sync.Mutex
+	t       *testing.T
+}
+
+var testStressIdentityWg sync.WaitGroup
+
+func (ha *testStressIdentityEventHandler) Send(ev *Event) {
+	log.WithField("TicketId", ev.TicketId).Info("--- Get Event ---")
+	assert.Nil(ha.t, ev.Err)
+	ha.m.Lock()
+	delete(ha.tickets, ev.TicketId)
+	ha.m.Unlock()
+	testStressIdentityWg.Done()
 }
 
 func TestStressIdentity(t *testing.T) {
@@ -202,12 +217,19 @@ func TestStressIdentity(t *testing.T) {
 	dir1, err := ioutil.TempDir("", "holderStressTest")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir1)
-	iden, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, 400, NewBytesArray())
+	tickets := make(map[string]*Ticket)
+	mutex := sync.Mutex{}
+	ha := &testStressIdentityEventHandler{
+		tickets: tickets,
+		t:       t,
+		m:       &mutex,
+	}
+	claimsLen := n * m
+	testStressIdentityWg.Add(claimsLen)
+	iden, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, 400, NewBytesArray(), ha)
 	require.Nil(t, err)
 
 	// Request claims
-	tickets := make(map[string]*Ticket)
-	mutex := sync.Mutex{}
 	for _i := 0; _i < n; _i++ {
 		i := _i
 		for _j := 0; _j < m; _j++ {
@@ -226,31 +248,8 @@ func TestStressIdentity(t *testing.T) {
 		}
 	}
 
-	// Test that tickets are persisted by reloading identities
-	// iden.Stop()
-	// id2.Stop()
-	// iden, err = NewIdentityTestLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod)
-	// require.Nil(t, err)
-	// id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod)
-	// require.Nil(t, err)
-
-	claimsLen := n * m
-
 	// Wait for the events that will get triggered on issuer response
-	for {
-		ev, err := iden.GetNextEvent()
-		require.Nil(t, err)
-		log.WithField("TicketId", ev.TicketId).Info("--- Get Event ---")
-		assert.Nil(t, ev.Err)
-		mutex.Lock()
-		delete(tickets, ev.TicketId)
-		if len(tickets) == 0 {
-			mutex.Unlock()
-			break
-		}
-		mutex.Unlock()
-	}
-
+	testStressIdentityWg.Wait()
 	claimIds := make([]string, 0)
 	err = iden.ClaimDB.Iterate_(func(id string, _ *proof.CredentialExistence) (bool, error) {
 		claimIds = append(claimIds, id)

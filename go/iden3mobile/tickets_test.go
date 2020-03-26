@@ -1,6 +1,7 @@
 package iden3mobile
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -11,13 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func eventHnadler(ev *Event) {
+func eventHandler(ev *Event) {
 	log.Info("Test event received. Id: ", ev.TicketId)
 	_err := ""
 	if ev.Err != nil {
 		_err = ev.Err.Error()
 	}
-	receivedEvents[ev.TicketId] = event{
+	receivedEvents[ev.TicketId] = testEvent{
 		Typ:  ev.Type,
 		Id:   ev.TicketId,
 		Data: ev.Data,
@@ -25,15 +26,15 @@ func eventHnadler(ev *Event) {
 	}
 }
 
-type event struct {
+type testEvent struct {
 	Typ  string
 	Id   string
 	Data string
 	Err  string
 }
 
-var expectedEvents map[string]event
-var receivedEvents map[string]event
+var expectedEvents map[string]testEvent
+var receivedEvents map[string]testEvent
 
 func addTestTicket(ts *Tickets, ticketId, err, expectedData string, sayImDone, addToExpected bool) Ticket {
 	hdlr := &testTicketHandler{
@@ -50,7 +51,7 @@ func addTestTicket(ts *Tickets, ticketId, err, expectedData string, sayImDone, a
 		panic(err)
 	}
 	if addToExpected {
-		expectedEvents[ticketId] = event{
+		expectedEvents[ticketId] = testEvent{
 			Typ:  TicketTypeTest,
 			Id:   ticketId,
 			Data: expectedData,
@@ -60,9 +61,57 @@ func addTestTicket(ts *Tickets, ticketId, err, expectedData string, sayImDone, a
 	return ticket
 }
 
+func testGetEventWithTimeOut(em *EventManager, idx uint32, nAtempts int, period time.Duration) *Event {
+	var ev *Event
+	var err error
+	i := 0
+	for ; i < nAtempts; i++ {
+		ev, err = em.GetEvent(idx)
+		if err == nil {
+			break
+		}
+		time.Sleep(period)
+	}
+	if i == nAtempts {
+		panic("Event not received: " + err.Error())
+	}
+	return ev
+}
+
+func newTestTicketSystem(dir string, firstTime bool) (*Tickets, *EventManager, chan Event, chan bool, *db.Storage, error) {
+	storage, err := loadStorage(dir)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+	eventCh := make(chan Event)
+	stopTs := make(chan bool)
+	em := NewEventManager(storage, eventCh, &testEventHandler{})
+	ts := NewTickets(storage.WithPrefix([]byte(ticketPrefix)))
+	if firstTime {
+		if err := em.Init(); err != nil {
+			return nil, nil, nil, nil, nil, err
+		}
+		if err := ts.Init(); err != nil {
+			return nil, nil, nil, nil, nil, err
+		}
+	}
+	em.Start()
+	return ts, em, eventCh, stopTs, &storage, nil
+}
+
+func startTestTicketSystem(ts *Tickets, eventCh chan Event, stopTs chan bool) {
+	go ts.CheckPending(nil, eventCh, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs)
+}
+
+func stopTestTicketSystem(em *EventManager, stopTs chan bool, storage db.Storage) {
+	stopTs <- true
+	em.Stop()
+	storage.Close()
+}
+
 func TestTicketSystem(t *testing.T) {
-	expectedEvents = make(map[string]event)
-	receivedEvents = make(map[string]event)
+	expectedEvents = make(map[string]testEvent)
+	receivedEvents = make(map[string]testEvent)
 	// Init two new ticket systems
 	dir1, err := ioutil.TempDir("", "ticketSystem1")
 	require.Nil(t, err)
@@ -70,30 +119,13 @@ func TestTicketSystem(t *testing.T) {
 	dir2, err := ioutil.TempDir("", "ticketSystem2")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
-	storage1, err := db.NewLevelDbStorage(dir1, false)
+
+	ts1, em1, eventCh1, stopTs1, storage1, err := newTestTicketSystem(dir1, true)
 	require.Nil(t, err)
-	storage2, err := db.NewLevelDbStorage(dir2, false)
+	startTestTicketSystem(ts1, eventCh1, stopTs1)
+	ts2, em2, eventCh2, stopTs2, storage2, err := newTestTicketSystem(dir2, true)
 	require.Nil(t, err)
-	eventCh1 := make(chan Event)
-	stopTs1 := make(chan bool)
-	em1, err := NewEventManager(storage1, eventCh1)
-	require.Nil(t, em1.Init())
-	em1.Start()
-	defer em1.Stop()
-	ts1 := NewTickets(storage1)
-	require.Nil(t, err)
-	require.Nil(t, ts1.Init())
-	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
-	eventCh2 := make(chan Event)
-	stopTs2 := make(chan bool)
-	em2, err := NewEventManager(storage2, eventCh2)
-	require.Nil(t, em2.Init())
-	em2.Start()
-	defer em2.Stop()
-	ts2 := NewTickets(storage2)
-	require.Nil(t, err)
-	require.Nil(t, ts2.Init())
-	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
+	startTestTicketSystem(ts2, eventCh2, stopTs2)
 
 	// Add tickets
 	// Succes ticket before stop
@@ -115,77 +147,58 @@ func TestTicketSystem(t *testing.T) {
 	addTestTicket(ts2, "ts2 - remove2", "Something went wrong", `{}`, false, false)
 	addTestTicket(ts1, "ts1 - remove3", "Something went wrong", `{}`, false, false)
 	addTestTicket(ts2, "ts2 - remove3", "Something went wrong", `{}`, false, false)
+
 	// Give time to process tickets for the first time.
-	time.Sleep(time.Duration(c.HolderTicketPeriod*2) * time.Millisecond)
+	nAtempts := 2
+	period := time.Duration(c.HolderTicketPeriod) * time.Millisecond
 	// Cancel ticket remove1
 	require.Nil(t, ts1.CancelTicket("ts1 - remove1"))
 	require.Nil(t, ts2.CancelTicket("ts2 - remove1"))
-
 	// Get "before" events
-	ev, err := em1.GetNextEvent() // ts1 - Succes ticket before stop || ts1 - Fail ticket before stop
-	require.Nil(t, err)
-	eventHnadler(ev)
-	ev, err = em2.GetNextEvent() // ts2 - Succes ticket before stop || ts2 - Fail ticket before stop
-	require.Nil(t, err)
-	eventHnadler(ev)
-	ev, err = em1.GetNextEvent() // ts1 - Succes ticket before stop || ts1 - Fail ticket before stop
-	require.Nil(t, err)
-	eventHnadler(ev)
-	ev, err = em2.GetNextEvent() // ts2 - Succes ticket before stop || ts2 - Fail ticket before stop
-	require.Nil(t, err)
-	eventHnadler(ev)
+	eventHandler(testGetEventWithTimeOut(em1, 0, nAtempts, period))
+	eventHandler(testGetEventWithTimeOut(em1, 1, nAtempts, period))
+	eventHandler(testGetEventWithTimeOut(em2, 0, nAtempts, period))
+	eventHandler(testGetEventWithTimeOut(em2, 1, nAtempts, period))
 
-	// Stop ticket system
-	stopTs1 <- true
-	stopTs2 <- true
-	// Make after stop tickets finish
+	// Stop ticket system, and create new ones *without starting*
+	stopTestTicketSystem(em1, stopTs1, *storage1)
+	ts1, em1, eventCh1, stopTs1, storage1, err = newTestTicketSystem(dir1, false)
+	require.Nil(t, err)
+	stopTestTicketSystem(em2, stopTs2, *storage2)
+	ts2, em2, eventCh2, stopTs2, storage2, err = newTestTicketSystem(dir2, false)
+	require.Nil(t, err)
+
+	// Make "after" tickets finish
 	id1After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
-	id2After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
 	id1After2.handler = &testTicketHandler{SayImDone: true, Err: "Something went wrong"}
-	id2After2.handler = &testTicketHandler{SayImDone: true, Err: "Something went wrong"}
 	require.Nil(t, ts1.Add([]Ticket{id1After1, id1After2}))
+	id2After1.handler = &testTicketHandler{SayImDone: true, Err: ""}
+	id2After2.handler = &testTicketHandler{SayImDone: true, Err: "Something went wrong"}
 	require.Nil(t, ts2.Add([]Ticket{id2After1, id2After2}))
 
-	// Restart ticket sistem
-	stopTs1 = make(chan bool)
-	ts1 = NewTickets(storage1)
-	go ts1.CheckPending(nil, eventCh1, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs1)
-	stopTs2 = make(chan bool)
-	ts2 = NewTickets(storage2)
-	go ts2.CheckPending(nil, eventCh2, time.Duration(c.HolderTicketPeriod)*time.Millisecond, stopTs2)
-	// Get "after" events
-	ev, err = em1.GetNextEvent() // ts1 - Succes ticket after stop || ts1 - Fail ticket after stop
-	require.Nil(t, err)
-	eventHnadler(ev)
-	ev, err = em2.GetNextEvent() // ts2 - Succes ticket after stop || ts2 - Fail ticket after stop
-	require.Nil(t, err)
-	eventHnadler(ev)
-	ev, err = em1.GetNextEvent() // ts1 - Succes ticket after stop || ts1 - Fail ticket after stop
-	require.Nil(t, err)
-	eventHnadler(ev)
-	ev, err = em2.GetNextEvent() // ts2 - Succes ticket after stop || ts2 - Fail ticket after stop
-	require.Nil(t, err)
-	eventHnadler(ev)
+	// Start ticket system
+	startTestTicketSystem(ts1, eventCh1, stopTs1)
+	startTestTicketSystem(ts2, eventCh2, stopTs2)
 
-	// Cancel ticket remove2
+	// Get "after" events
+	eventHandler(testGetEventWithTimeOut(em1, 2, nAtempts, period))
+	eventHandler(testGetEventWithTimeOut(em1, 3, nAtempts, period))
+	eventHandler(testGetEventWithTimeOut(em2, 2, nAtempts, period))
+	eventHandler(testGetEventWithTimeOut(em2, 3, nAtempts, period))
+
+	// Cancel ticket remove2 and remove3
 	require.Nil(t, ts1.CancelTicket("ts1 - remove2"))
-	// Randomize goroutines excution
-	time.Sleep(time.Duration(c.HolderTicketPeriod*2) * time.Millisecond)
 	require.Nil(t, ts2.CancelTicket("ts2 - remove2"))
-	// Randomize goroutines excution
-	time.Sleep(time.Duration(1 * time.Millisecond))
-	// Cancel ticket remove3
 	require.Nil(t, ts1.CancelTicket("ts1 - remove3"))
 	require.Nil(t, ts2.CancelTicket("ts2 - remove3"))
 
 	// Compare received events vs expected events
 	require.Equal(t, expectedEvents, receivedEvents)
 	// Check that there are no pending tickets, give time for cancellation to be effective
-	time.Sleep(time.Duration(c.HolderTicketPeriod*2) * time.Millisecond)
-	pendingTicketsCounter := 0
+	time.Sleep(period * 2)
 	iterFn := func(t *Ticket) (bool, error) {
 		if t.Status == TicketStatusPending {
-			pendingTicketsCounter++
+			return false, errors.New("There should not be any pending ticket. Pending ticket ID: " + t.Id)
 		}
 		return true, nil
 	}
@@ -195,7 +208,7 @@ func TestTicketSystem(t *testing.T) {
 	if err := ts2.Iterate_(iterFn); err != nil {
 		require.Nil(t, err)
 	}
-	require.Equal(t, 0, pendingTicketsCounter)
-	stopTs1 <- true
-	stopTs2 <- true
+	// Stop ticket system
+	stopTestTicketSystem(em1, stopTs1, *storage1)
+	stopTestTicketSystem(em2, stopTs2, *storage2)
 }
