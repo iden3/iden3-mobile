@@ -3,6 +3,8 @@ name: Gomobile
 on:
   push:
     branches: [ master ]
+#  pull_request:
+#    branches: [ master ]
 
 jobs:
   build:
@@ -27,8 +29,12 @@ jobs:
               mkdir /tmp/build && \
               gomobile bind --target android -o /tmp/build/iden3mobile.aar && \
               mv /tmp/build /builds/out'
-        echo "::set-output name=sha256_aar::$(sha256sum --tag iden3mobile.aar)"
-        echo "::set-output name=sha256_jar::$(sha256sum --tag iden3mobile-sources.jar)"
+        # mkdir -p /tmp/builds/out
+        # touch /tmp/builds/out/iden3mobile.aar
+        # touch /tmp/builds/out/iden3mobile-sources.jar
+        cd /tmp/builds/out
+        echo "::set-output name=sha256_aar::$(sha256sum iden3mobile.aar | cut -d' ' -f1)"
+        echo "::set-output name=sha256_jar::$(sha256sum iden3mobile-sources.jar | cut -d' ' -f1)"
 
     - name: Artifact aar
       uses: actions/upload-artifact@v1
@@ -49,7 +55,7 @@ jobs:
 
     - name: Bump Version
       id: bump_version
-      uses: christian-draeger/increment-semantic-version@1.0.1
+      uses: ed255/increment-semantic-version@master
       with:
         current-version: ${{ steps.last_version.outputs.version }}
         version-fragment: beta
@@ -66,10 +72,10 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.next_version.outputs.version }}
-        release_name: Release ${{ steps.next_version.outputs.version }} ${{ github.ref }}
+        release_name: Release ${{ steps.next_version.outputs.version }}
         body: |
-          ${{ steps.build.outputs.sha256_aar }}
-          ${{ steps.build.outputs.sha256_jar }}
+          * SHA256 (iden3mobile.aar) = `${{ steps.build.outputs.sha256_aar }}`
+          * SHA256 (iden3mobile-sources.jar) = `${{ steps.build.outputs.sha256_jar }}`
         draft: false
         prerelease: true
 
