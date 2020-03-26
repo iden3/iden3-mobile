@@ -1,0 +1,96 @@
+name: Gomobile
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Gomobile
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2
+    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+    - name: Build
+      id: build
+      run: |
+        mkdir -p /tmp/builds
+        docker pull ed255/gomobile-android:latest
+        docker run \
+          --mount type=bind,source=$PWD,target=/root/iden3-mobile,readonly \
+          --mount type=bind,source=/tmp/builds,target=/builds \
+            ed255/gomobile-android:latest \
+            /bin/bash -c 'set -ex && \
+              cd /root/iden3-mobile/go/iden3mobile && \
+              mkdir /tmp/build && \
+              gomobile bind --target android -o /tmp/build/iden3mobile.aar && \
+              mv /tmp/build /builds/out'
+        echo "::set-output name=sha256_aar::$(sha256sum --tag iden3mobile.aar)"
+        echo "::set-output name=sha256_jar::$(sha256sum --tag iden3mobile-sources.jar)"
+
+    - name: Artifact aar
+      uses: actions/upload-artifact@v1
+      with:
+        name: iden3ombile.aar
+        path: /tmp/builds/out/iden3mobile.aar
+
+    - name: Artifact jar
+      uses: actions/upload-artifact@v1
+      with:
+        name: iden3mobile-sources.jar
+        path: /tmp/builds/out/iden3mobile-sources.jar
+
+    - name: Last Version
+      id: last_version
+      run: |
+        echo ::set-output name=version::$(git tag --list 'v*' | sort --version-sort | tail -n 1 | cut -c2-)
+
+    - name: Bump Version
+      id: bump_version
+      uses: christian-draeger/increment-semantic-version@1.0.1
+      with:
+        current-version: ${{ steps.last_version.outputs.version }}
+        version-fragment: beta
+
+    - name: Next Version
+      id: next_version
+      run: |
+        echo ::set-output name=version::v${{ steps.bump_version.outputs.next-version }}
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.next_version.outputs.version }}
+        release_name: Release ${{ steps.next_version.outputs.version }} ${{ github.ref }}
+        body: |
+          ${{ steps.build.outputs.sha256_aar }}
+          ${{ steps.build.outputs.sha256_jar }}
+        draft: false
+        prerelease: true
+
+    - name: Release aar
+      id: release-aar
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /tmp/builds/out/iden3mobile.aar
+        asset_name: iden3mobile.aar
+        asset_content_type: application/zip
+
+    - name: Release jar
+      id: release-jar
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+         upload_url: ${{ steps.create_release.outputs.upload_url }}
+         asset_path: /tmp/builds/out/iden3mobile-sources.jar
+         asset_name: iden3mobile-sources.jar
+         asset_content_type: application/zip
