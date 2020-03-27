@@ -33,7 +33,6 @@ type Identity struct {
 const (
 	kOpStorKey           = "kOpComp"
 	eventsStorKey        = "eventsKey"
-	nextEventIdxKey      = "nextEventIdxKey"
 	storageSubPath       = "/idStore"
 	keyStorageSubPath    = "/idKeyStore"
 	smartContractAddress = "0xF6a014Ac66bcdc1BF51ac0fa68DF3f17f4b3e574"
@@ -60,16 +59,16 @@ func isEmpty(path string) (bool, error) {
 // this funciton is mapped as a constructor in Java.
 // NOTE: The storePath must be unique per Identity.
 // NOTE: Right now the extraGenesisClaims is useless.
-func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
+func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, eventHandler Sender) (*Identity, error) {
 	idenPubOnChain, err := loadIdenPubOnChain(web3Url)
 	if err != nil {
 		return nil, err
 	}
-	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims)
+	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, eventHandler)
 }
 
 func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer,
-	checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray) (*Identity, error) {
+	checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, eventHandler Sender) (*Identity, error) {
 	// Check that storePath points to an empty dir
 	if dirIsEmpty, err := isEmpty(storePath); !dirIsEmpty || err != nil {
 		if err == nil {
@@ -121,16 +120,8 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
-	// TODO: Parse extra genesis claims. Call toClaimers once it's implemented
-	// _extraGenesisClaims, err := extraGenesisClaims.toClaimers()
-	if err != nil {
-		return nil, err
-	}
-	em, err := NewEventManager(storage, nil)
-	if err != nil {
-		return nil, err
-	}
-	if err := em.Init(); err != nil {
+	// Init event mannager
+	if err := NewEventManager(storage, nil, nil).Init(); err != nil {
 		return nil, err
 	}
 	// Create new Identity (holder)
@@ -154,20 +145,20 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 	}
 	storage.Close()
 	resourcesAreClosed = true
-	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis)
+	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, eventHandler)
 }
 
 // NewIdentityLoad loads an already created identity
 // this funciton is mapped as a constructor in Java
-func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int) (*Identity, error) {
+func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
 	idenPubOnChain, err := loadIdenPubOnChain(web3Url)
 	if err != nil {
 		return nil, err
 	}
-	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis)
+	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, eventHandler)
 }
 
-func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer, checkTicketsPeriodMilis int) (*Identity, error) {
+func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
 	// TODO: figure out how to diferentiate the two constructors from Java: https://github.com/iden3/iden3-mobile/issues/17#issuecomment-587374644
 	storage, err := loadStorage(path.Join(storePath, folderStore))
 	if err != nil {
@@ -191,11 +182,8 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 		return nil, err
 	}
 	// Init event manager
-	eventQueue := make(chan Event, 10)
-	em, err := NewEventManager(storage, eventQueue)
-	if err != nil {
-		return nil, err
-	}
+	eventQueue := make(chan Event, 16)
+	em := NewEventManager(storage, eventQueue, eventHandler)
 	em.Start()
 
 	// Init Identity
@@ -208,15 +196,8 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 		eventMan:    em,
 		ClaimDB:     NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
-	go iden.Tickets.CheckPending(iden, em.eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
+	go iden.Tickets.CheckPending(iden, eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
-}
-
-// GetNextEvent returns the oldest event that has been generated.
-// Note that each event can only be retireved once.
-// Note that this function is blocking and potentially for a very long time.
-func (i *Identity) GetNextEvent() (*Event, error) {
-	return i.eventMan.GetNextEvent()
 }
 
 // Stop close all the open resources of the Identity
