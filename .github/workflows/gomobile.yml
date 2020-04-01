@@ -3,8 +3,6 @@ name: Gomobile
 on:
   push:
     branches: [ master ]
-#  pull_request:
-#    branches: [ master ]
 
 jobs:
   build:
@@ -29,9 +27,6 @@ jobs:
               mkdir /tmp/build && \
               gomobile bind --target android -o /tmp/build/iden3mobile.aar && \
               mv /tmp/build /builds/out'
-        # mkdir -p /tmp/builds/out
-        # touch /tmp/builds/out/iden3mobile.aar
-        # touch /tmp/builds/out/iden3mobile-sources.jar
         cd /tmp/builds/out
         echo "::set-output name=sha256_aar::$(sha256sum iden3mobile.aar | cut -d' ' -f1)"
         echo "::set-output name=sha256_jar::$(sha256sum iden3mobile-sources.jar | cut -d' ' -f1)"
@@ -100,3 +95,12 @@ jobs:
          asset_path: /tmp/builds/out/iden3mobile-sources.jar
          asset_name: iden3mobile-sources.jar
          asset_content_type: application/zip
+    - uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+    - name: Publish Android artifacts to GitHub Packages
+      run: |
+        cd /tmp/builds/out
+        mvn deploy:deploy-file -Dfile=iden3mobile.aar -Durl=https://maven.pkg.github.com/iden3/iden3-mobile -DrepositoryId=github -DrepositoryName="GitHub Pages" -Dfiles=iden3mobile-sources.jar -Dtypes=jar -Dclassifiers=sources -DgroupId=com.iden3 -DartifactId=iden3mobile -Dversion="${{ steps.next_version.outputs.version }}" -Dpackaging=aar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
