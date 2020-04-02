@@ -2,7 +2,7 @@ vendor/
 .vscode
 ####### tmp
 flutter/
-android/
+android/iden3coreapi/github.properties
 helper-scripts/
 ####### mockup server
 go/mockupServer/main/main
