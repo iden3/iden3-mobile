@@ -2,7 +2,6 @@ vendor/
 .vscode
 ####### tmp
 flutter/
-android/
 helper-scripts/
 ####### mockup server
 go/mockupServer/main/main
@@ -82,6 +81,7 @@ unlinked_spec.ds
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
+**/android/iden3coreapi/github.properties
 *.jks
 
 # iOS/XCode related
