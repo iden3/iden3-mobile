@@ -15,6 +15,10 @@ android {
         consumerProguardFiles 'consumer-rules.pro'
     }
 
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -43,7 +47,12 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.2.0'
     implementation 'com.iden3:iden3mobile:v0.0.1-beta4'
+    // Required -- JUnit 4 framework
     testImplementation 'junit:junit:4.13'
+    // Optional -- Robolectric environment
+    testImplementation 'androidx.test:core:1.2.0'
+    // Optional -- Mockito framework
+    testImplementation 'org.mockito:mockito-core:2.7.21'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 }
