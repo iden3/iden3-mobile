@@ -82,6 +82,7 @@ unlinked_spec.ds
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
 **/android/iden3coreapi/github.properties
+**/android/iden3coreapi/infura.properties
 *.jks
 
 # iOS/XCode related
