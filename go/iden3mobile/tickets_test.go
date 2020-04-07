@@ -149,7 +149,7 @@ func TestTicketSystem(t *testing.T) {
 	addTestTicket(ts2, "ts2 - remove3", "Something went wrong", `{}`, false, false)
 
 	// Give time to process tickets for the first time.
-	nAtempts := 2
+	nAtempts := 4
 	period := time.Duration(c.HolderTicketPeriod) * time.Millisecond
 	// Cancel ticket remove1
 	require.Nil(t, ts1.CancelTicket("ts1 - remove1"))

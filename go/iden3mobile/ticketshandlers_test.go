@@ -109,7 +109,7 @@ func TestHolderHandlers(t *testing.T) {
 	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
-	nAtempts := 6
+	nAtempts := 10
 	period := time.Duration(c.HolderTicketPeriod) * time.Millisecond
 	eventFromId = 1
 	holderEventHandler(testGetEventWithTimeOut(id1.eventMan, 0, nAtempts, period))
