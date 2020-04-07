@@ -11,7 +11,7 @@ import androidx.test.core.app.ApplicationProvider
  * See [testing documentation](http://d.android.com/tools/testing).
  */
 class ExampleUnitTest {
-    val context = ApplicationProvider.getApplicationContext<Context>()
+    //val context = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
     fun addition_isCorrect() {
@@ -20,7 +20,7 @@ class ExampleUnitTest {
 
     @Test
     fun testIden3CoreAPI() {
-        val iden3CoreAPI = Iden3CoreAPI.instance
+        val iden3CoreAPI = Iden3CoreAPI()
         assertTrue(iden3CoreAPI != null)
     }
 }

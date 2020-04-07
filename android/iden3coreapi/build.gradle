@@ -13,6 +13,12 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
+        // Infura config
+        Properties infuraProperties = new Properties()
+        InputStream ins = new FileInputStream("iden3coreapi/infura.properties")
+        infuraProperties.load(ins)
+        ins.close()
+        buildConfigField("String", "INFURA_URL", infuraProperties['url'])
     }
 
     testOptions {
@@ -46,7 +52,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.2.0'
-    implementation 'com.iden3:iden3mobile:v0.0.1-beta4'
+    implementation 'com.iden3:iden3mobile:v0.0.1-beta8'
     // Required -- JUnit 4 framework
     testImplementation 'junit:junit:4.13'
     // Optional -- Robolectric environment
