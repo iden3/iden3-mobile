@@ -5,25 +5,154 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-    name: Test
+  goTest:
+    name: Test Go
     runs-on: ubuntu-latest
     strategy:
       matrix:
         flags: [ "", "-race" ]
 
     steps:
+    - uses: actions/checkout@v1
+    
+    - name: Check if must run
+      id: check
+      run: |
+        git diff origin/master -- go > changes
+        if [ -s changes ]; then
+            echo ::set-output name=shouldRun::yes
+            echo "The Go code has changed. The test will be executed."
+        else
+            echo "The Go code has NOT changed. The test will NOT be executed."
+        fi
 
     - name: Set up Go 1.14
+      if: steps.check.outputs.shouldRun == 'yes'
       uses: actions/setup-go@v1
       with:
         go-version: 1.14
       id: go
 
-    - uses: actions/checkout@v2
-
     - name: Test ${{ matrix.flags }}
+      if: steps.check.outputs.shouldRun == 'yes'
       run: |
         cd go/iden3mobile
         go get -v -t -d ./...
         go test -v -count=1 ${{ matrix.flags }} ./...
+
+  goBind:
+    name: Bind Go code to Android
+    needs: goTest
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Check if must run
+        id: check
+        run: |
+          git diff origin/master -- go > changes
+          if [ -s changes ]; then
+              echo ::set-output name=shouldRun::yes
+              echo "The Go code has changed. The Android integration test will be executed."
+          else
+              git diff origin/master -- android/gointegration > changes
+              if [ -s changes ]; then
+                echo ::set-output name=shouldRun::yes
+                echo "The Android test code has changed. The Android integration test will be executed."
+              else
+                echo "The Go and the Android test code code have NOT changed. The Android integration test will NOT be executed."
+              fi
+          fi
+
+      - name: Build
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: |
+          mkdir -p /tmp/builds
+          docker pull ed255/gomobile-android:latest
+          docker run \
+            --mount type=bind,source=$PWD,target=/root/iden3-mobile,readonly \
+            --mount type=bind,source=/tmp/builds,target=/builds \
+              ed255/gomobile-android:latest \
+              /bin/bash -c 'set -ex && \
+                cd /root/iden3-mobile/go/iden3mobile && \
+                mkdir /tmp/build && \
+                gomobile bind --target android -o /tmp/build/iden3mobile.aar && \
+                mv /tmp/build /builds/out'
+  
+      - name: Artifact aar
+        if: steps.check.outputs.shouldRun == 'yes'
+        uses: actions/upload-artifact@v1
+        with:
+          name: iden3ombile.aar
+          path: /tmp/builds/out/iden3mobile.aar
+
+  androidIntegrationTest:
+    name: Test binded Go in Android
+    needs: goBind
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Check if must run
+        id: check
+        run: |
+          git diff origin/master -- go > changes
+          if [ -s changes ]; then
+              echo ::set-output name=shouldRun::yes
+              echo "The Go code has changed. The Android integration test will be executed."
+          else
+              git diff origin/master -- android/gointegration > changes
+              if [ -s changes ]; then
+                echo ::set-output name=shouldRun::yes
+                echo "The Android test code has changed. The Android integration test will be executed."
+              else
+                echo "The Go and the Android test code code have NOT changed. The Android integration test will NOT be executed."
+              fi
+          fi
+
+      - name: Download app APK
+        if: steps.check.outputs.shouldRun == 'yes'
+        uses: actions/download-artifact@v1
+        with:
+          name: iden3mobile.aar
+
+      - name: Set up JDK 1.8
+        if: steps.check.outputs.shouldRun == 'yes'
+        uses: actions/setup-java@v1
+        with:
+          java-version: 1.8
+
+      - name: Inject secrets and build config
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: |
+          echo "${{secrets.GH_AUTH}}" > android/github.properties
+          echo '${{secrets.INFURA_TOKEN}}' > android/infura.properties
+          mv iden3mobile.aar android/gointegration/src/libs
+          rm android/gointegration/build.gradle
+          mv android/gointegration/build.GHAgradle android/gointegration/build.gradle
+          cd android && gradle wrapper
+
+      - name: Assemble app debug APK
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: cd android && ./gradlew :gointegration:assembleDebug --stacktrace
+
+      - name: Assemble Android Instrumentation Tests
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: cd android && ./gradlew :gointegration:assembleDebugAndroidTest --stacktrace
+
+      - name: Login to Google Cloud
+        if: steps.check.outputs.shouldRun == 'yes'
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+          service_account_email: ${{ secrets.GCLOUD_EMAIL }}
+          service_account_key: ${{ secrets.GCLOUD_AUTH }}
+          export_default_credentials: true
+
+      - name: Run Instrumentation Tests in Firebase Test Lab
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: |
+          gcloud firebase test android run --type instrumentation --use-orchestrator \
+          --app android/gointegration/build/outputs/apk/debug/gointegration-debug.apk \
+          --test android/gointegration/build/outputs/apk/androidTest/debug/gointegration-debug-androidTest.apk \
+          --device model=Pixel2,version=28,locale=es,orientation=portrait
