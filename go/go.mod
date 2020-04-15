@@ -18,7 +18,7 @@ require (
 	github.com/iden3/go-iden3-core v0.0.7
 	github.com/iden3/go-iden3-crypto v0.0.4
 	github.com/iden3/go-iden3-servers v0.0.1
-	github.com/iden3/go-iden3-servers-demo v0.0.1
+	github.com/iden3/go-iden3-servers-demo v0.0.2-0.20200406142900-4d2cd944c56c
 	github.com/ipfs/go-log v1.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect

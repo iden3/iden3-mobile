@@ -73,16 +73,18 @@ unlinked.ds
 unlinked_spec.ds
 
 # Android related
+**/android/gointegration/src/main/res/
 **/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
+**/android/gradle/
 **/android/gradlew
 **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
-**/android/iden3coreapi/github.properties
-**/android/iden3coreapi/infura.properties
+**/android/github.properties
+**/android/infura.properties
 *.jks
 
 # iOS/XCode related
