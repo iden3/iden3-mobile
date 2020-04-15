@@ -38,7 +38,7 @@ android {
             url = uri("https://maven.pkg.github.com/iden3/iden3-mobile")
             credentials {
                 Properties githubProperties = new Properties()
-                InputStream ins = new FileInputStream("iden3coreapi/github.properties")
+                InputStream ins = new FileInputStream("github.properties")
                 githubProperties.load(ins)
                 ins.close()
                 username = githubProperties['username']
