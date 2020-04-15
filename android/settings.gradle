@@ -1,1 +1,2 @@
 include ':iden3coreapi'
+include ':iden3apidemo'
