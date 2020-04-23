@@ -13,7 +13,8 @@ jobs:
         flags: [ "", "-race" ]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+    - run: git fetch origin master
     
     - name: Check if must run
       id: check
@@ -45,7 +46,8 @@ jobs:
     needs: goTest
     runs-on: ubuntu-18.04
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
+      - run: git fetch origin master
 
       - name: Check if must run
         id: check

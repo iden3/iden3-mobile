@@ -1,0 +1,31 @@
+on: [ pull_request ]
+name: Lint
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch origin master
+    
+      - name: Check if must run
+        id: check
+        run: |
+          git diff origin/master -- go > changes
+          if [ -s changes ]; then
+              echo ::set-output name=shouldRun::yes
+              echo "The Go code has changed. The linter will be executed."
+          else
+              echo "The Go code has NOT changed. The linter will NOT be executed."
+          fi
+  
+      - name: Install Go
+        if: steps.check.outputs.shouldRun == 'yes'
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14.x
+      
+      - name: Lint
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.24.0
+          cd go && $(go env GOPATH)/bin/golangci-lint run

@@ -1,16 +1,8 @@
 package iden3mobile
 
-import (
-	"github.com/iden3/go-iden3-core/merkletree"
-)
-
 // TODO. HAVE A LOOK AT CODE GEN
 type BytesArray struct {
 	array [][]byte
-}
-
-type byteEntrier struct {
-	entry *merkletree.Entry
 }
 
 func NewBytesArray() *BytesArray {
@@ -29,8 +21,4 @@ func (ba *BytesArray) Get(i int) []byte {
 
 func (ba *BytesArray) Append(bs []byte) {
 	ba.array = append(ba.array, bs)
-}
-
-func (e *byteEntrier) Entry() *merkletree.Entry {
-	return e.entry
 }
