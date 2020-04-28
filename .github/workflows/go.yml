@@ -5,25 +5,104 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-    name: Test
+  goTest:
+    name: Test Go
     runs-on: ubuntu-latest
     strategy:
       matrix:
         flags: [ "", "-race" ]
 
     steps:
+    - uses: actions/checkout@v2
+    - run: git fetch origin master
+    
+    - name: Check if must run
+      id: check
+      run: |
+        git diff origin/master -- go > changes
+        if [ -s changes ]; then
+            echo ::set-output name=shouldRun::yes
+            echo "The Go code has changed. The test will be executed."
+        else
+            echo "The Go code has NOT changed. The test will NOT be executed."
+        fi
 
     - name: Set up Go 1.14
+      if: steps.check.outputs.shouldRun == 'yes'
       uses: actions/setup-go@v1
       with:
         go-version: 1.14
       id: go
 
-    - uses: actions/checkout@v2
-
     - name: Test ${{ matrix.flags }}
+      if: steps.check.outputs.shouldRun == 'yes'
       run: |
         cd go/iden3mobile
         go get -v -t -d ./...
         go test -v -count=1 ${{ matrix.flags }} ./...
+
+  goAndroidIntegrationTest:
+    name: Bind Go code to Android and test
+    needs: goTest
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch origin master
+
+      - name: Check if must run
+        id: check
+        run: |
+          git diff origin/master -- go > changes
+          if [ -s changes ]; then
+              echo ::set-output name=shouldRun::yes
+              echo "The Go code has changed. The Android integration test will be executed."
+          else
+              git diff origin/master -- android/gointegration > changes
+              if [ -s changes ]; then
+                echo ::set-output name=shouldRun::yes
+                echo "The Android test code has changed. The Android integration test will be executed."
+              else
+                echo "The Go and the Android test code code have NOT changed. The Android integration test will NOT be executed."
+              fi
+          fi
+
+      - name: Bind Go code for Android and compile testing APKs
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: |
+          docker pull ed255/gomobile-android:API29-noemu
+          echo "${{secrets.GH_AUTH}}" > android/github.properties
+          echo '${{secrets.INFURA_TOKEN}}' > android/infura.properties
+          docker run \
+            --mount type=bind,source=$PWD,target=/root/iden3-mobile \
+              ed255/gomobile-android:API29-noemu \
+              /bin/bash -c 'set -ex && \
+                wget https://services.gradle.org/distributions/gradle-6.2-bin.zip -P /tmp && \
+                unzip -d /opt/gradle /tmp/gradle-*.zip && \
+                export GRADLE_HOME=/opt/gradle/gradle-6.2 && \
+                export PATH=${GRADLE_HOME}/bin:${PATH} && \
+                cd /root/iden3-mobile/go/iden3mobile && \
+                mkdir -p ../../android/gointegration/src/libs && \
+                gomobile bind --target android -o ../../android/gointegration/src/libs/iden3mobile.aar && \
+                cd ../../android && \
+                rm gointegration/build.gradle && \
+                mv gointegration/build.GHAgradle gointegration/build.gradle && \
+                gradle wrapper && \
+                ./gradlew :gointegration:assembleDebug --stacktrace && \
+                ./gradlew :gointegration:assembleDebugAndroidTest --stacktrace'
+
+      - name: Login to Google Cloud
+        if: steps.check.outputs.shouldRun == 'yes'
+        uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.FIREBASE_PROJECT_ID }}
+          service_account_email: ${{ secrets.GCLOUD_EMAIL }}
+          service_account_key: ${{ secrets.GCLOUD_AUTH }}
+          export_default_credentials: true
+
+      - name: Run Instrumentation Tests in Firebase Test Lab
+        if: steps.check.outputs.shouldRun == 'yes'
+        run: |
+          gcloud firebase test android run --type instrumentation --use-orchestrator \
+          --app android/gointegration/build/outputs/apk/debug/gointegration-debug.apk \
+          --test android/gointegration/build/outputs/apk/androidTest/debug/gointegration-debug-androidTest.apk \
+          --device model=Pixel2,version=28,locale=es,orientation=portrait

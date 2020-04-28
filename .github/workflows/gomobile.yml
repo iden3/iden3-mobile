@@ -17,11 +17,11 @@ jobs:
       id: build
       run: |
         mkdir -p /tmp/builds
-        docker pull ed255/gomobile-android:latest
+        docker pull ed255/gomobile-android:API29-noemu
         docker run \
           --mount type=bind,source=$PWD,target=/root/iden3-mobile,readonly \
           --mount type=bind,source=/tmp/builds,target=/builds \
-            ed255/gomobile-android:latest \
+            ed255/gomobile-android:API29-noemu \
             /bin/bash -c 'set -ex && \
               cd /root/iden3-mobile/go/iden3mobile && \
               mkdir /tmp/build && \
