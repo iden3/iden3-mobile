@@ -1,4 +1,4 @@
-package com.cryptox.iden3apidemo
+package com.iden3.iden3apidemo
 
 import org.junit.Test
 

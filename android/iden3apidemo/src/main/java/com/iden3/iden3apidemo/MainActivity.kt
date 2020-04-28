@@ -1,4 +1,4 @@
-package com.cryptox.iden3apidemo
+package com.iden3.iden3apidemo
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle

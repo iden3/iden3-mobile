@@ -1,2 +1,2 @@
 include ':iden3coreapi'
-include ':gointegration'
+include ':iden3apidemo'

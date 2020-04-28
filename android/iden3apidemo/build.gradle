@@ -5,15 +5,23 @@ apply plugin: 'kotlin-android-extensions'
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
+    ndkVersion "20.0.5594570"
 
     defaultConfig {
-        applicationId "com.cryptox.iden3apidemo"
+        applicationId "com.iden3.iden3apidemo"
         minSdkVersion 19
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Infura config
+        Properties infuraProperties = new Properties()
+        InputStream ins = new FileInputStream("infura.properties")
+        infuraProperties.load(ins)
+        ins.close()
+        buildConfigField("String", "INFURA_URL", infuraProperties['url'])
     }
 
     buildTypes {
