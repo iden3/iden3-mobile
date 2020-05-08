@@ -3,6 +3,8 @@ name: Gomobile
 on:
   push:
     branches: [ master ]
+    paths:
+    - go/**
 
 jobs:
   build:
