@@ -8,6 +8,7 @@ go/mockupServer/main/main
 ####### gomobile
 **/config.yml
 go/iden3mobile/iden3mobile-sources.jar
+android/gointegration/src/libs/iden3mobile-sources.jar
 go/iden3mobile/iden3mobile
 # uncompressed jar
 go/iden3mobile/go
@@ -74,12 +75,8 @@ unlinked_spec.ds
 
 # Android related
 **/android/gointegration/src/main/res/
-**/android/**/gradle-wrapper.jar
 **/android/.gradle
 **/android/captures/
-**/android/gradle/
-**/android/gradlew
-**/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties

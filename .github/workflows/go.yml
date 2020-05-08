@@ -76,17 +76,12 @@ jobs:
             --mount type=bind,source=$PWD,target=/root/iden3-mobile \
               ed255/gomobile-android:API29-noemu \
               /bin/bash -c 'set -ex && \
-                wget https://services.gradle.org/distributions/gradle-6.2-bin.zip -P /tmp && \
-                unzip -d /opt/gradle /tmp/gradle-*.zip && \
-                export GRADLE_HOME=/opt/gradle/gradle-6.2 && \
-                export PATH=${GRADLE_HOME}/bin:${PATH} && \
                 cd /root/iden3-mobile/go/iden3mobile && \
                 mkdir -p ../../android/gointegration/src/libs && \
                 gomobile bind --target android -o ../../android/gointegration/src/libs/iden3mobile.aar && \
                 cd ../../android && \
                 rm gointegration/build.gradle && \
                 mv gointegration/build.GHAgradle gointegration/build.gradle && \
-                gradle wrapper && \
                 ./gradlew :gointegration:assembleDebug --stacktrace && \
                 ./gradlew :gointegration:assembleDebugAndroidTest --stacktrace'
 
