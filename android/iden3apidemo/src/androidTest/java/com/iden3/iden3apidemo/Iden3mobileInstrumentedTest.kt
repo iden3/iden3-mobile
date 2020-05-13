@@ -161,6 +161,30 @@ class Iden3mobileInstrumentedTest {
     }
 
     @Test
+    fun testLoadIdentitySuccess() {
+        val file = File("$storePath/alias")
+        if (file.exists()) {
+            file.deleteRecursively()
+            file.mkdirs()
+        }
+        
+        Iden3mobile.newIdentity(
+            "$storePath/alias",
+            "password",
+            web3Url,
+            1000,
+            null
+        ) { event -> print(event) }
+
+        Iden3mobile.newIdentityLoad(
+            "$storePath/alias",
+            "password",
+            web3Url,
+            1000
+        ) { event -> print(event) }
+    }
+
+    @Test
     fun testLoadIdentityErrorNotCreatedYet() {
         expectedException.expect(Exception::class.java)
         expectedException.expectMessage(StringContains("no such file or directory"))
