@@ -1,11 +1,12 @@
 package com.iden3.iden3coreapi
 
 import iden3mobile.*
+import java.io.File
 import java.lang.IllegalArgumentException
 import java.util.ArrayList
 import java.util.HashMap
 
-class Iden3CoreAPI {
+open class Iden3CoreAPI {
 
     companion object {
         @JvmStatic lateinit var instance: Iden3CoreAPI
@@ -21,12 +22,13 @@ class Iden3CoreAPI {
     private lateinit var storePath: String
     private var checkTicketsPeriod : Long = 10000
 
-    fun initializeAPI(web3Url: String, issuerUrl: String, verifierUrl: String, storePath: String, checkTicketsPeriod: Long) {
+    fun initializeAPI(web3Url: String, issuerUrl: String, verifierUrl: String, storePath: String, checkTicketsPeriod: Long) : Boolean {
         this.web3Url = web3Url
         this.issuerUrl = issuerUrl
         this.verifierUrl = verifierUrl
         this.storePath = storePath
         this.checkTicketsPeriod = checkTicketsPeriod
+        return isInitialized()
     }
 
     fun isInitialized() : Boolean {
@@ -39,13 +41,40 @@ class Iden3CoreAPI {
             if (alias.isEmpty() || password.isEmpty()) {
                 throw IllegalArgumentException("Iden3 method called with not valid arguments")
             } else {
-                return Iden3mobile.newIdentity(
-                    "$storePath/$alias",
-                    password,
-                    web3Url,
-                    checkTicketsPeriod,
-                    null
-                ) { event -> print(event) }
+                try {
+                    val file = File("$storePath/$alias")
+                    return if (!file.exists()) {
+                        file.deleteRecursively()
+                        file.mkdirs()
+                        /*Identity( "$storePath/$alias",
+                            password,
+                            web3Url,
+                            checkTicketsPeriod,
+                            null
+                        ) { event -> print(event) }*/
+                        Iden3mobile.newIdentity(
+                            "$storePath/$alias",
+                            password,
+                            web3Url,
+                            checkTicketsPeriod,
+                            null
+                        ) { event -> print(event) }
+                    } else {
+                        /*Identity( "$storePath/$alias",
+                            password,
+                            web3Url,
+                            checkTicketsPeriod
+                        ) { event -> print(event) }*/
+                        Iden3mobile.newIdentityLoad("$storePath/$alias",
+                            password,
+                            web3Url,
+                            checkTicketsPeriod
+                        ) { event -> print(event) }
+                    }
+
+                } catch (e:Exception) {
+                    throw e
+                }
             }
         } else {
             throw IllegalStateException("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
