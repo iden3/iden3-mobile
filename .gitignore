@@ -83,8 +83,8 @@ unlinked_spec.ds
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
-android/github.properties
-android/infura.properties
+**/android/github.properties
+**/android/infura.properties
 *.jks
 
 # iOS/XCode related
