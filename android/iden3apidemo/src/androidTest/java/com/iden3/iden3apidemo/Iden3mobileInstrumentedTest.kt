@@ -5,15 +5,12 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import iden3mobile.Iden3mobile
 import org.hamcrest.core.StringContains
-import org.junit.Assert
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
 import org.junit.runner.RunWith
 import java.io.File
-import java.util.concurrent.ExecutionException
-import kotlin.math.log
 
 
 /**
@@ -48,7 +45,7 @@ class Iden3mobileInstrumentedTest {
             file.deleteRecursively()
             file.mkdirs()
         }
-        val identity = Iden3mobile.newIdentity(
+        Iden3mobile.newIdentity(
             "$storePath/alias",
             "password",
             web3Url,
