@@ -139,10 +139,12 @@ class GomobileIntegrationTest {
         })
 
         // Check claims on DB
+        Log.i("fullFlow","CHECK CLAIMS ON DB.")
         assertEquals(nIdentities*nClaimsPerId, countClaims(ids))
 
         // Test cancel ticket
         // Request a claim to generate a ticket
+        Log.i("fullFlow","REQUESTING CLAIMS AND CANCELING THEM.")
         ticketCounter = 0
         for (id in ids){
             id?.requestClaimWithCb(issuerUrl, "${Instant.now()}", object: CallbackRequestClaim{
@@ -161,7 +163,7 @@ class GomobileIntegrationTest {
             Thread.sleep(1000)
         }
         // Check tickets
-        Log.i("fullFlow","CHECK TICKETS AFTER RESTART")
+        Log.i("fullFlow","CHECK CANCELLED TICKETS AFTER RESTART")
         // Give time for cancellation to take effect
         Thread.sleep(1000)
         ticketCounter = 0
@@ -181,14 +183,18 @@ class GomobileIntegrationTest {
         assertEquals(nIdentities, cancelledTicketCounter)
 
         // Stop identities
+        Log.i("fullFlow","STOPPING IDENTITIES.")
         for(id in ids){
             id?.stop()
         }
 
         // Remove identity directories
+        Log.i("fullFlow","CLEANING TEST DIRECTORIES.")
         for (i in 0 until nIdentities){
             File("$storePath/$i").deleteRecursively()
         }
+
+        Log.i("fullFlow","TEST COMPLETED :)")
     }
 
     fun restartIdentities(ids: List<Identity?>, storePath: String, web3Url: String, fn: (e:Event)->Unit): List<Identity?>{
