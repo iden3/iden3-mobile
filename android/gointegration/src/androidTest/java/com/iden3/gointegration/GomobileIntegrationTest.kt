@@ -1,4 +1,4 @@
-package com.iden3.iden3apidemo
+package com.iden3.gointegration
 
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
