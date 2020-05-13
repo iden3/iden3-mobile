@@ -162,19 +162,22 @@ class Iden3mobileInstrumentedTest {
 
     @Test
     fun testLoadIdentitySuccess() {
+        //Error opening leveldb storage: resource temporarily unavailable
         val file = File("$storePath/alias")
         if (file.exists()) {
             file.deleteRecursively()
             file.mkdirs()
         }
-        
-        Iden3mobile.newIdentity(
+
+        val identity = Iden3mobile.newIdentity(
             "$storePath/alias",
             "password",
             web3Url,
             1000,
             null
         ) { event -> print(event) }
+
+        identity.stop()
 
         Iden3mobile.newIdentityLoad(
             "$storePath/alias",
@@ -203,19 +206,22 @@ class Iden3mobileInstrumentedTest {
     @Test
     fun testLoadIdentityErrorWrongPassword() {
         expectedException.expect(Exception::class.java)
-        expectedException.expectMessage(StringContains("Error opening leveldb storage: resource temporarily unavailable"))
+        expectedException.expectMessage(StringContains("Error unlocking babyjub key from keystore: Invalid encrypted data"))
         val file = File("$storePath/alias")
         if (file.exists()) {
             file.deleteRecursively()
             file.mkdirs()
         }
-        Iden3mobile.newIdentity(
+        val identity = Iden3mobile.newIdentity(
             "$storePath/alias",
             "password",
             web3Url,
             1000,
             null
         ) { event -> print(event) }
+
+        identity.stop()
+
         Iden3mobile.newIdentityLoad(
             "$storePath/alias",
             "wrongPassword",
