@@ -55,6 +55,7 @@ class Iden3CoreAPInstrumentedTest {
         if (isInitialized) {
             val identity = iden3CoreAPI.createIdentity("alias", "password")
             assertTrue(identity != null)
+            iden3CoreAPI.stopIdentity(identity!!)
         } else {
             assert(false)
         }
@@ -65,13 +66,16 @@ class Iden3CoreAPInstrumentedTest {
         val isInitialized = initializeAPI()
         if (isInitialized) {
             if (File("$storePath/alias").exists()) {
-                val identityLoaded = iden3CoreAPI.createIdentity("alias", "password")
+                val identityLoaded = iden3CoreAPI.loadIdentity("alias", "password")
                 assertTrue(identityLoaded != null)
+                iden3CoreAPI.stopIdentity(identityLoaded!!)
             } else {
                 val identityCreated = iden3CoreAPI.createIdentity("alias", "password")
+                iden3CoreAPI.stopIdentity(identityCreated!!)
                 if (File("$storePath/alias").exists()) {
-                    val identityLoaded = iden3CoreAPI.createIdentity("alias", "password")
+                    val identityLoaded = iden3CoreAPI.loadIdentity("alias", "password")
                     assertTrue(identityLoaded != null)
+                    iden3CoreAPI.stopIdentity(identityLoaded!!)
                 } else {
                     assert(false)
                 }
@@ -89,24 +93,7 @@ class Iden3CoreAPInstrumentedTest {
             if (identity != null) {
                 val ticket = iden3CoreAPI.requestClaim(identity,"${Instant.now()}", null)
                 assertTrue(ticket != null)
-            } else {
-                assert(false)
-            }
-        } else {
-            assert(false)
-        }
-    }
-
-    @Test
-    fun testRequestClaimErrorPermissionDenied() {
-        expectedException.expect(Exception::class.java)
-        expectedException.expectMessage(StringContains("permission denied"))
-        val isInitialized = initializeAPI()
-        if (isInitialized) {
-            val identity = iden3CoreAPI.createIdentity("alias", "password")
-            if (identity != null) {
-                val ticket = iden3CoreAPI.requestClaim(identity,"${Instant.now()}", null)
-                assertTrue(ticket != null)
+                iden3CoreAPI.stopIdentity(identity)
             } else {
                 assert(false)
             }

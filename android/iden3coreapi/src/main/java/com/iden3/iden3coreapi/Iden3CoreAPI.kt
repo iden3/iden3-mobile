@@ -2,6 +2,7 @@ package com.iden3.iden3coreapi
 
 import iden3mobile.*
 import java.io.File
+import java.io.FileNotFoundException
 import java.lang.IllegalArgumentException
 import java.util.ArrayList
 import java.util.HashMap
@@ -46,12 +47,6 @@ open class Iden3CoreAPI {
                     return if (!file.exists()) {
                         file.deleteRecursively()
                         file.mkdirs()
-                        /*Identity( "$storePath/$alias",
-                            password,
-                            web3Url,
-                            checkTicketsPeriod,
-                            null
-                        ) { event -> print(event) }*/
                         Iden3mobile.newIdentity(
                             "$storePath/$alias",
                             password,
@@ -60,11 +55,6 @@ open class Iden3CoreAPI {
                             null
                         ) { event -> print(event) }
                     } else {
-                        /*Identity( "$storePath/$alias",
-                            password,
-                            web3Url,
-                            checkTicketsPeriod
-                        ) { event -> print(event) }*/
                         Iden3mobile.newIdentityLoad("$storePath/$alias",
                             password,
                             web3Url,
@@ -76,6 +66,42 @@ open class Iden3CoreAPI {
                     throw e
                 }
             }
+        } else {
+            throw IllegalStateException("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
+        }
+    }
+
+    @Throws(Exception::class)
+    fun loadIdentity(alias: String, password: String) : Identity? {
+        if (isInitialized()) {
+            if (alias.isEmpty() || password.isEmpty()) {
+                throw IllegalArgumentException("Iden3 method called with not valid arguments")
+            } else {
+                try {
+                    val file = File("$storePath/$alias")
+                    if (file.exists()) {
+                        return Iden3mobile.newIdentityLoad("$storePath/$alias",
+                            password,
+                            web3Url,
+                            checkTicketsPeriod
+                        ) { event -> print(event) }
+                    } else {
+                        throw FileNotFoundException("Identity not found. Please be sure the identity" +
+                                " is created calling createIdentity method before loading it")
+                    }
+                } catch (e:Exception) {
+                    throw e
+                }
+            }
+        } else {
+            throw IllegalStateException("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
+        }
+    }
+
+    @Throws(Exception::class)
+    fun stopIdentity(identity: Identity) {
+        if (isInitialized()) {
+            identity.stop()
         } else {
             throw IllegalStateException("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
         }
