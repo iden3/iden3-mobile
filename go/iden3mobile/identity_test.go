@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	zktypes "github.com/iden3/go-circom-prover-verifier/types"
 	idenpubonchainlocal "github.com/iden3/go-iden3-core/components/idenpubonchain/local"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -70,14 +71,6 @@ func (tb *TimeBlock) Block() uint64 {
 var timeBlock TimeBlock
 
 func TestMain(m *testing.M) {
-	// Load config file
-	// dat, err := ioutil.ReadFile("./config.yml")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// if err := yaml.Unmarshal(dat, &c); err != nil {
-	// 	panic(err)
-	// }
 	c = config{
 		Web3Url:             "https://foo.bar",
 		IssuerUrl:           "http://127.0.0.1:1234/",
@@ -89,6 +82,7 @@ func TestMain(m *testing.M) {
 	idenPubOnChain = idenpubonchainlocal.New(
 		timeBlock.Time,
 		timeBlock.Block,
+		&zktypes.Vk{},
 	)
 	// Create a tmp directory to store test files
 	// Run tests

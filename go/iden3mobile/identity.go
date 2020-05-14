@@ -177,7 +177,14 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 		return nil, fmt.Errorf("Error unlocking babyjub key from keystore: %w", err)
 	}
 	// Load existing Identity (holder)
-	holdr, err := holder.Load(storage, keyStore, idenPubOnChain, nil, readerhttp.NewIdenPubOffChainHttp())
+	holdr, err := holder.Load(
+		storage,
+		keyStore,
+		idenPubOnChain,
+		nil,
+		nil,
+		readerhttp.NewIdenPubOffChainHttp(),
+	)
 	if err != nil {
 		return nil, err
 	}
