@@ -1,14 +1,11 @@
-package com.iden3.gointegration
+package com.iden3.coreapiintegration
 
 import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.iden3.coreapiintegration.test.BuildConfig
 import com.iden3.iden3coreapi.Iden3CoreAPI
-import iden3mobile.Iden3mobile
-import org.hamcrest.core.StringContains
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -54,7 +51,7 @@ class Iden3CoreAPInstrumentedTest {
         val isInitialized = initializeAPI()
         if (isInitialized) {
             val identity = iden3CoreAPI.createIdentity("alias", "password")
-            assertTrue(identity != null)
+            assertNotEquals(identity, null)
             iden3CoreAPI.stopIdentity(identity!!)
         } else {
             assert(false)
@@ -67,14 +64,14 @@ class Iden3CoreAPInstrumentedTest {
         if (isInitialized) {
             if (File("$storePath/alias").exists()) {
                 val identityLoaded = iden3CoreAPI.loadIdentity("alias", "password")
-                assertTrue(identityLoaded != null)
+                assertNotEquals(identityLoaded, null)
                 iden3CoreAPI.stopIdentity(identityLoaded!!)
             } else {
                 val identityCreated = iden3CoreAPI.createIdentity("alias", "password")
                 iden3CoreAPI.stopIdentity(identityCreated!!)
                 if (File("$storePath/alias").exists()) {
                     val identityLoaded = iden3CoreAPI.loadIdentity("alias", "password")
-                    assertTrue(identityLoaded != null)
+                    assertNotEquals(identityLoaded, null)
                     iden3CoreAPI.stopIdentity(identityLoaded!!)
                 } else {
                     assert(false)
@@ -90,9 +87,9 @@ class Iden3CoreAPInstrumentedTest {
         val isInitialized = initializeAPI()
         if (isInitialized) {
             val identity = iden3CoreAPI.createIdentity("alias", "password")
-            if (identity != null) {
+            if (null != identity) {
                 val ticket = iden3CoreAPI.requestClaim(identity,"${Instant.now()}", null)
-                assertTrue(ticket != null)
+                assertNotEquals(ticket, null)
                 iden3CoreAPI.stopIdentity(identity)
             } else {
                 assert(false)

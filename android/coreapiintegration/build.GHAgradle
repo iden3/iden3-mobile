@@ -8,7 +8,7 @@ android {
     ndkVersion "20.0.5594570"
 
     defaultConfig {
-        applicationId "com.iden3.gointegration"
+        applicationId "com.iden3.coreapiintegration"
         minSdkVersion 19
         targetSdkVersion 29
         versionCode 1
@@ -50,7 +50,8 @@ dependencies {
         androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.1'
         androidTestImplementation 'androidx.test:runner:1.2.0'
         androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-
-        api(name:'iden3mobile', ext:'aar')
+        api(name:'iden3coreapi', ext:'aar') {
+            transitive = true
+        }
 }
 
