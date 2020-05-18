@@ -110,11 +110,11 @@ open class Iden3CoreAPI {
     @Throws(Exception::class)
     fun requestClaim(identity: Identity, data: String, callback: CallbackRequestClaim?) : Ticket? {
         if (isInitialized()) {
-                if (callback == null) {
-                    return identity.requestClaim(issuerUrl, data)
-                } else {
-                    identity.requestClaimWithCb(issuerUrl, data, callback)
-                }
+            if (callback == null) {
+                return identity.requestClaim(issuerUrl, data)
+            } else {
+                identity.requestClaimWithCb(issuerUrl, data, callback)
+            }
         } else {
             throw IllegalStateException("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
         }

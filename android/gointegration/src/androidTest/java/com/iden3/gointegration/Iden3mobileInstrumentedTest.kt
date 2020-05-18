@@ -291,17 +291,17 @@ class Iden3mobileInstrumentedTest {
             null
         ) { event -> print(event) }
 
-        var ticketCounter = 0
+        var isFinished = false
         identity.requestClaimWithCb(issuerUrl, "${Instant.now()}") { ticket, e ->
-            ticketCounter++
+            isFinished = true
             Log.i("testRequestClaimWithCallbackSuccess","Ticket: $ticket")
-            Assert.assertNotEquals(null, ticket)
-            Assert.assertEquals(null, e)
+            assertNotEquals(null, ticket)
+            assertEquals(null, e)
             identity.stop()
         }
 
         // Wait for callback
-        while (ticketCounter < 1){
+        while (!isFinished){
             Log.i("testRequestClaimWithCallbackSuccess","Waiting for request claim ticket")
             Thread.sleep(100)
         }
@@ -322,14 +322,14 @@ class Iden3mobileInstrumentedTest {
             null
         ) { event -> print(event) }
 
-        var ticketCounter = 0
+        var isFinished = false
         identity.requestClaimWithCb(issuerUrl, "${Instant.now()}") { ticket, e ->
             Log.i("testProveClaimWithCallbackSuccess","Ticket: $ticket")
             Assert.assertNotEquals(null, ticket)
             Assert.assertEquals(null, e)
             identity.proveClaimWithCb(verifierUrl, ticket.id) { success, exception ->
                 Log.i("testProveClaimWithCallbackSuccess", "Proving Clam success: $success exception: $exception")
-                ticketCounter++
+                isFinished = true
                 Assert.assertEquals(true, success)
                 Assert.assertEquals(null, exception)
                 identity.stop()
@@ -337,17 +337,10 @@ class Iden3mobileInstrumentedTest {
         }
 
         // Wait for callback
-        while (ticketCounter < 1){
+        while (!isFinished){
             Log.i("testProveClaimWithCallbackSuccess","Waiting for request claim ticket")
             Thread.sleep(100)
         }
-
-
-        //identity.claimDB?.iterateClaimsJSON { key, claim ->
-        //    Log.i("testProveClaimWithCallbackSuccess", "Verify claim: $key.")
-
-        // true
-        //}
     }
 
     @Test

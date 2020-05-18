@@ -1,10 +1,12 @@
 package com.iden3.coreapiintegration
 
 import android.content.Context
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.iden3.coreapiintegration.test.BuildConfig
 import com.iden3.iden3coreapi.Iden3CoreAPI
+import iden3mobile.CallbackRequestClaim
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule
@@ -98,6 +100,51 @@ class Iden3CoreAPInstrumentedTest {
             assert(false)
         }
     }
+
+    @Test
+    fun testRequestClaimWithCallbackSuccess() {
+        val isInitialized = initializeAPI()
+        if (isInitialized) {
+            val identity = iden3CoreAPI.createIdentity("alias", "password")
+            if (null != identity) {
+                var isFinished = false
+                iden3CoreAPI.requestClaim(identity,"${Instant.now()}",
+                    CallbackRequestClaim { ticket, exception ->
+                        isFinished = true
+                        Log.i("testRequestClaimWithCallbackSuccess", "Ticket: $ticket")
+                        iden3CoreAPI.stopIdentity(identity)
+                        assertNotEquals(null, ticket)
+                        assertEquals(null, exception)
+                    })
+                // Wait for callback
+                while (!isFinished){
+                    Log.i("testRequestClaimWithCallbackSuccess","Waiting for request claim ticket")
+                    Thread.sleep(1000)
+                }
+            } else {
+                assert(false)
+            }
+        } else {
+            assert(false)
+        }
+    }
+
+    /*@Test
+    fun testProveClaimSuccess() {
+        val isInitialized = initializeAPI()
+        if (isInitialized) {
+            val identity = iden3CoreAPI.createIdentity("alias", "password")
+            if (null != identity) {
+                val ticket = iden3CoreAPI.proveClaim(identity,"${Instant.now()}", null)
+                assertNotEquals(ticket, null)
+                iden3CoreAPI.stopIdentity(identity)
+            } else {
+                assert(false)
+            }
+        } else {
+            assert(false)
+        }
+    }*/
 
     private fun initializeAPI() : Boolean {
        return iden3CoreAPI.initializeAPI(web3Url, issuerUrl, verifierUrl, storePath, 10000)

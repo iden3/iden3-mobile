@@ -2,6 +2,12 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
+buildscript {
+    ext {
+        iden3mobile_version = 'v0.0.1-beta12'
+    }
+}
+
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
@@ -62,4 +68,5 @@ dependencies {
     androidTestImplementation(project(path: ':iden3coreapi')) {
         transitive = true
     }
+    androidTestImplementation "com.iden3:iden3mobile:$iden3mobile_version"
 }

@@ -71,17 +71,4 @@ dependencies {
     implementation "com.iden3:iden3mobile:$iden3mobile_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.2.0'
-
-    // Required -- JUnit 4 framework
-    testImplementation 'junit:junit:4.13'
-    // Optional -- Robolectric environment
-    testImplementation 'androidx.test:core:1.2.0'
-    testImplementation 'androidx.test.ext:junit:1.1.1'
-    testImplementation "org.robolectric:robolectric:4.0.2"
-    testImplementation "com.iden3:iden3mobile:$iden3mobile_version"
-    testImplementation "androidx.test:runner:1.2.0"
-    // Optional -- Mockito framework
-    testImplementation 'org.mockito:mockito-core:2.24.5'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 }
