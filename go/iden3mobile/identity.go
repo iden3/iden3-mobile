@@ -205,13 +205,13 @@ func (i Identity) Export(pass []byte) (storage *db.Storage, keyStore *babykeysto
 
 	// Unlock key store
 	kOpComp := &babyjub.PublicKeyComp{}
-	if err := db.LoadJSON(storage, []byte(kOpStorKey), kOpComp); err != nil {
+	if err := db.LoadJSON(i.storage, []byte(kOpStorKey), kOpComp); err != nil {
 		return nil, nil
 	}
 	if err := i.keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
 		return nil, nil
 	}
-        return &i.storage, &i.keyStore
+        return i.storage, &i.keyStore
 }
 
 // Stop close all the open resources of the Identity
