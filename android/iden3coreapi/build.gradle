@@ -2,6 +2,12 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
+buildscript {
+    ext {
+        iden3mobile_version = 'v0.0.1-beta12'
+    }
+}
+
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
@@ -11,6 +17,7 @@ android {
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
+        testOptions.unitTests.includeAndroidResources = true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles 'consumer-rules.pro'
         // Infura config
@@ -21,7 +28,18 @@ android {
         buildConfigField("String", "INFURA_URL", infuraProperties['url'])
     }
 
+
+
     testOptions {
+        unitTests.returnDefaultValues = true
+        unitTests.all {
+            // All the usual Gradle options.
+            testLogging {
+                events "passed", "skipped", "failed", "standardOut", "standardError"
+                outputs.upToDateWhen { false }
+                showStandardStreams = true
+            }
+        }
         unitTests.includeAndroidResources = true
     }
 
@@ -50,15 +68,7 @@ android {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "com.iden3:iden3mobile:$iden3mobile_version"
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.core:core-ktx:1.2.0'
-    implementation 'com.iden3:iden3mobile:v0.0.1-beta8'
-    // Required -- JUnit 4 framework
-    testImplementation 'junit:junit:4.13'
-    // Optional -- Robolectric environment
-    testImplementation 'androidx.test:core:1.2.0'
-    // Optional -- Mockito framework
-    testImplementation 'org.mockito:mockito-core:2.7.21'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 }

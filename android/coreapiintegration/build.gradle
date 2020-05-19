@@ -14,7 +14,7 @@ android {
     ndkVersion "20.0.5594570"
 
     defaultConfig {
-        applicationId "com.iden3.gointegration"
+        applicationId "com.iden3.coreapiintegration"
         minSdkVersion 19
         targetSdkVersion 29
         versionCode 1
@@ -65,5 +65,8 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.1'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation(project(path: ':iden3coreapi')) {
+        transitive = true
+    }
     androidTestImplementation "com.iden3:iden3mobile:$iden3mobile_version"
 }

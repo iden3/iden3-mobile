@@ -69,14 +69,12 @@ class GomobileIntegrationTest {
         for (i in 0 until nClaimsPerId){
             var idCount = 0
             for (id in ids){
-                id?.requestClaimWithCb(issuerUrl, "$idCount/$i/${Instant.now()}", object: CallbackRequestClaim{
-                    override fun fn(ticket: Ticket?, e: Exception?) {
-                        assertNotEquals(null, ticket)
-                        assertEquals(null, e)
-                        ticketCounter++
-                        Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED: ${ticket?.id}. $ticketCounter TICKETS RECEIVED SO FAR}")
-                    }
-                })
+                id?.requestClaimWithCb(issuerUrl, "$idCount/$i/${Instant.now()}") { ticket, e ->
+                    assertNotEquals(null, ticket)
+                    assertEquals(null, e)
+                    ticketCounter++
+                    Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED: ${ticket?.id}. $ticketCounter TICKETS RECEIVED SO FAR}")
+                }
                 idCount++
             }
         }
