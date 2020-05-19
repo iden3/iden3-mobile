@@ -201,7 +201,7 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 }
 
 // Export storage and keystore
-func (i Identity) Export(pass []byte) (storage *db.Storage, keyStore *babykeystore.KeyStore) {
+func (i Identity) Export(pass []byte) (storage db.Storage, keyStore *babykeystore.KeyStore) {
 
 	// Unlock key store
 	kOpComp := &babyjub.PublicKeyComp{}
@@ -211,7 +211,7 @@ func (i Identity) Export(pass []byte) (storage *db.Storage, keyStore *babykeysto
 	if err := i.keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
 		return nil, nil
 	}
-        return i.storage, &i.keyStore
+        return i.storage, i.keyStore
 }
 
 // Stop close all the open resources of the Identity
