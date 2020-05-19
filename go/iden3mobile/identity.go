@@ -200,6 +200,20 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 	return iden, nil
 }
 
+// Export storage and keystore
+func (i Identity) Export(pass []byte) (storage *db.Storage, keyStore *babykeystore.KeyStore) {
+
+	// Unlock key store
+	kOpComp := &babyjub.PublicKeyComp{}
+	if err := db.LoadJSON(storage, []byte(kOpStorKey), kOpComp); err != nil {
+		return nil, nil
+	}
+	if err := i.keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
+		return nil, nil
+	}
+        return &i.storage, &i.keyStore
+}
+
 // Stop close all the open resources of the Identity
 func (i *Identity) Stop() {
 	log.Info("Stopping identity: ", i.id.ID())
