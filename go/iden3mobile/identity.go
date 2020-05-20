@@ -177,9 +177,11 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 	}
 	// Unlock key store
 	kOpComp := &babyjub.PublicKeyComp{}
+	log.Info("Loaded Baby Jub")
 	if err := db.LoadJSON(storage, []byte(kOpStorKey), kOpComp); err != nil {
 		return nil, err
 	}
+	log.Info("Loaded JSON")
 	if err := keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
 		return nil, fmt.Errorf("Error unlocking babyjub key from keystore: %w", err)
 	}
