@@ -80,6 +80,7 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 	if err := os.Mkdir(storagePath, 0700); err != nil {
 		return nil, err
 	}
+	log.Info("Loading storage")
 	storage, err := loadStorage(storagePath)
 	if err != nil {
 		return nil, err
@@ -88,6 +89,7 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 	if err := os.Mkdir(keyStoreStoragePath, 0700); err != nil {
 		return nil, err
 	}
+	log.Info("Loading Key storage")
 	keyStore, err := loadKeyStoreBabyJub(keyStoreStoragePath)
 	if err != nil {
 		return nil, err
@@ -102,10 +104,12 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 		}
 	}()
 	// Create babyjub keys
+	log.Info("New Key")
 	kOpComp, err := keyStore.NewKey([]byte(pass))
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Unlock Key")
 	if err = keyStore.UnlockKey(kOpComp, []byte(pass)); err != nil {
 		return nil, err
 	}
@@ -125,6 +129,7 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 		return nil, err
 	}
 	// Create new Identity (holder)
+	log.Info("Create Identity")
 	if _, err = holder.Create(
 		holder.ConfigDefault,
 		kOpComp,
