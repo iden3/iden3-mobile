@@ -165,10 +165,12 @@ func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 
 func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
 	// TODO: figure out how to diferentiate the two constructors from Java: https://github.com/iden3/iden3-mobile/issues/17#issuecomment-587374644
+	log.Info("Identity Load")
 	storage, err := loadStorage(path.Join(storePath, folderStore))
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Load Baby Jub")
 	keyStore, err := loadKeyStoreBabyJub(path.Join(storePath, folderKeyStore))
 	if err != nil {
 		return nil, err
@@ -182,6 +184,7 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 		return nil, fmt.Errorf("Error unlocking babyjub key from keystore: %w", err)
 	}
 	// Load existing Identity (holder)
+	log.Info("Load Holder")
 	holdr, err := holder.Load(storage, keyStore, idenPubOnChain, nil, readerhttp.NewIdenPubOffChainHttp())
 	if err != nil {
 		return nil, err
@@ -201,6 +204,7 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 		eventMan:    em,
 		ClaimDB:     NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
+	log.Info("Tickets check point")
 	go iden.Tickets.CheckPending(iden, eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
 }
