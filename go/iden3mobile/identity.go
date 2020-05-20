@@ -177,7 +177,14 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 		return nil, fmt.Errorf("Error unlocking babyjub key from keystore: %w", err)
 	}
 	// Load existing Identity (holder)
-	holdr, err := holder.Load(storage, keyStore, idenPubOnChain, nil, readerhttp.NewIdenPubOffChainHttp())
+	holdr, err := holder.Load(
+		storage,
+		keyStore,
+		idenPubOnChain,
+		nil,
+		nil,
+		readerhttp.NewIdenPubOffChainHttp(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +230,8 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 	res := issuerMsg.ResClaimRequest{}
 	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
 		"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
-		Value: data,
+		Value:    data,
+		HolderID: i.id.ID(),
 	}), &res); err != nil {
 		return nil, err
 	}

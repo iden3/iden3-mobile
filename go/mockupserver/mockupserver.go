@@ -19,6 +19,7 @@ import (
 	"github.com/iden3/go-iden3-core/identity/issuer"
 	"github.com/iden3/go-iden3-core/keystore"
 	"github.com/iden3/go-iden3-core/merkletree"
+	zkutils "github.com/iden3/go-iden3-core/utils/zk"
 	"github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	verifierMsg "github.com/iden3/go-iden3-servers-demo/servers/verifier/messages"
@@ -115,7 +116,27 @@ func NewIssuer(t *testing.T, idenPubOnChain idenpubonchain.IdenPubOnChainer,
 	require.Nil(t, err)
 	_, err = issuer.Create(cfg, kOp, []claims.Claimer{}, storage, keyStore)
 	require.Nil(t, err)
-	is, err := issuer.Load(storage, keyStore, idenPubOnChain, idenPubOffChainWrite)
+	require.Nil(t, err)
+	idenStateZkProofConf := &issuer.IdenStateZkProofConf{
+		Levels: 16,
+		Files: *zkutils.NewZkFiles(
+			"http://161.35.72.58:9000/circuit-idstate/",
+			"/tmp/iden3/idenstatezk",
+			zkutils.ZkFilesHashes{
+				ProvingKey:      "2c72fceb10323d8b274dbd7649a63c1b6a11fff3a1e4cd7f5ec12516f32ec452",
+				VerificationKey: "473952ff80aef85403005eb12d1e78a3f66b1cc11e7bd55d6bfe94e0b5577640",
+				WitnessCalcWASM: "8eafd9314c4d2664a23bf98a4f42cd0c29984960ae3544747ba5fbd60905c41f",
+			},
+			true,
+		),
+	}
+	is, err := issuer.Load(
+		storage,
+		keyStore,
+		idenPubOnChain,
+		idenStateZkProofConf,
+		idenPubOffChainWrite,
+	)
 	require.Nil(t, err)
 	return is
 }
