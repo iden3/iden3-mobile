@@ -42,7 +42,7 @@ const (
 	eventsStorKey        = "eventsKey"
 	storageSubPath       = "/idStore"
 	keyStorageSubPath    = "/idKeyStore"
-	smartContractAddress = "0x09561a45339910894705419af321c69a8832eab4"
+	smartContractAddress = "0x4cd72fcedf61937ffc8995d7c0839c976f3cc129"
 	credExisPrefix       = "credExis"
 	folderStore          = "store"
 	folderKeyStore       = "keystore"

@@ -115,42 +115,26 @@ func TestHolderHandlers(t *testing.T) {
 	holderEventHandler(testGetEventWithTimeOut(id1.eventMan, 0, nAtempts, period))
 	eventFromId = 2
 	holderEventHandler(testGetEventWithTimeOut(id2.eventMan, 0, nAtempts, period))
-	// Prove claim
-	i := 0
-	// TODO: rm +100
-	for ; i < c.VerifierAttempts+100; i++ {
-		// // Prove Claims
-		// success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
-		// if err != nil {
-		// 	log.Error("Error proving claim: ", err)
-		// }
-		// success2, err := id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
-		// if err != nil {
-		// 	log.Error("Error proving claim: ", err)
-		// }
-		// Prove Claims with ZK
-		success1ZK, err := id1.ProveClaimZK(c.VerifierUrl, id1ClaimID[:])
-		if err != nil {
-			log.Error("Error proving claim: ", err)
-		}
-		success2ZK, err := id2.ProveClaimZK(c.VerifierUrl, id2ClaimID[:])
-		if err != nil {
-			log.Error("Error proving claim: ", err)
-		}
-		// if success1 && success2 && success1ZK && success2ZK {
-		// 	break
-		// }
-		if success1ZK && success2ZK {
-			break
-		}
-		time.Sleep(time.Duration(c.VerifierRetryPeriod) * time.Second * 10)
-	}
-	require.NotEqual(t, c.VerifierAttempts, i)
+	// Prove Claims
+	isSuccess, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
+	require.True(t, isSuccess)
+	require.NoError(t, err)
+	isSuccess, err = id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
+	require.True(t, isSuccess)
+	require.NoError(t, err)
+	// Prove Claims with ZK
+	isSuccess, err = id1.ProveClaimZK(c.VerifierUrl, id1ClaimID[:])
+	require.True(t, isSuccess)
+	require.NoError(t, err)
+	isSuccess, err = id2.ProveClaimZK(c.VerifierUrl, id2ClaimID[:])
+	require.True(t, isSuccess)
+	require.NoError(t, err)
+	// Stop identities
 	id1.Stop()
 	id2.Stop()
 
 	// err = server.Shutdown(context.Background())
-	require.Nil(t, err)
+	// require.Nil(t, err)
 }
 
 func randomBase64String(l int) string {
