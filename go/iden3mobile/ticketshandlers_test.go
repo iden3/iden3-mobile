@@ -59,15 +59,15 @@ func holderEventHandler(ev *Event) {
 
 func TestHolderHandlers(t *testing.T) {
 	// Sync idenPubOnChain every 2 seconds
-	go func() {
-		for {
-			log.Info("idenPubOnChain.Sync()")
-			timeBlock.AddTime(10)
-			timeBlock.AddBlock(1)
-			idenPubOnChain.Sync()
-			time.Sleep(2 * time.Second)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		log.Info("idenPubOnChain.Sync()")
+	// 		timeBlock.AddTime(10)
+	// 		timeBlock.AddBlock(1)
+	// 		idenPubOnChain.Sync()
+	// 		time.Sleep(2 * time.Second)
+	// 	}
+	// }()
 
 	// // Start mockup server
 	// server := mockupserver.Serve(t, &mockupserver.Conf{
@@ -91,7 +91,7 @@ func TestHolderHandlers(t *testing.T) {
 
 	id1, err := NewIdentityTest(dir1, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
-	id2, err := NewIdentityTest(dir2, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id2, err := NewIdentityTest(dir2, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Request claim
 	t1, err := id1.RequestClaim(c.IssuerUrl, randomBase64String(80))
@@ -109,7 +109,7 @@ func TestHolderHandlers(t *testing.T) {
 	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
-	nAtempts := 10
+	nAtempts := 1000 // TODO: go back to 10 atempts
 	period := time.Duration(c.HolderTicketPeriod) * time.Millisecond
 	eventFromId = 1
 	holderEventHandler(testGetEventWithTimeOut(id1.eventMan, 0, nAtempts, period))
@@ -117,19 +117,33 @@ func TestHolderHandlers(t *testing.T) {
 	holderEventHandler(testGetEventWithTimeOut(id2.eventMan, 0, nAtempts, period))
 	// Prove claim
 	i := 0
-	for ; i < c.VerifierAttempts; i++ {
-		success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
+	// TODO: rm +100
+	for ; i < c.VerifierAttempts+100; i++ {
+		// // Prove Claims
+		// success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
+		// if err != nil {
+		// 	log.Error("Error proving claim: ", err)
+		// }
+		// success2, err := id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
+		// if err != nil {
+		// 	log.Error("Error proving claim: ", err)
+		// }
+		// Prove Claims with ZK
+		success1ZK, err := id1.ProveClaimZK(c.VerifierUrl, id1ClaimID[:])
 		if err != nil {
 			log.Error("Error proving claim: ", err)
 		}
-		success2, err := id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
+		success2ZK, err := id2.ProveClaimZK(c.VerifierUrl, id2ClaimID[:])
 		if err != nil {
 			log.Error("Error proving claim: ", err)
 		}
-		if success1 && success2 {
+		// if success1 && success2 && success1ZK && success2ZK {
+		// 	break
+		// }
+		if success1ZK && success2ZK {
 			break
 		}
-		time.Sleep(time.Duration(c.VerifierRetryPeriod) * time.Second)
+		time.Sleep(time.Duration(c.VerifierRetryPeriod) * time.Second * 10)
 	}
 	require.NotEqual(t, c.VerifierAttempts, i)
 	id1.Stop()

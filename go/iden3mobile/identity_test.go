@@ -72,9 +72,9 @@ var timeBlock TimeBlock
 
 func TestMain(m *testing.M) {
 	c = config{
-		Web3Url:             "https://goerli.infura.io/v3/8c0749f9e58f4369909af7ef70e9b15a",
+		Web3Url:             "xxx",
 		IssuerUrl:           "http://127.0.0.1:6100/api/unstable/",
-		VerifierUrl:         "http://127.0.0.1:6200/",
+		VerifierUrl:         "http://127.0.0.1:6200/api/unstable/",
 		VerifierAttempts:    5,
 		VerifierRetryPeriod: 6,
 		HolderTicketPeriod:  1000,
@@ -105,7 +105,12 @@ func NewIdentityTest(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	if s == nil {
 		s = &testEventHandler{}
 	}
-	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, s)
+	// TODO: tmpIdenPubOnChain ==> idenPubOnChain
+	tmpIdenPubOnChain, err := loadIdenPubOnChain(web3Url)
+	if err != nil {
+		panic(err)
+	}
+	return newIdentity(storePath, pass, tmpIdenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, s)
 }
 
 // NewIdentityTestLoad is like NewIdentityLoad but uses a local implementation of the smart contract in idenPubOnChain
@@ -113,7 +118,12 @@ func NewIdentityTestLoad(storePath, pass, web3Url string, checkTicketsPeriodMili
 	if s == nil {
 		s = &testEventHandler{}
 	}
-	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, s)
+	// TODO: tmpIdenPubOnChain ==> idenPubOnChain
+	tmpIdenPubOnChain, err := loadIdenPubOnChain(web3Url)
+	if err != nil {
+		panic(err)
+	}
+	return newIdentityLoad(storePath, pass, tmpIdenPubOnChain, checkTicketsPeriodMilis, s)
 }
 
 func TestNewIdentity(t *testing.T) {

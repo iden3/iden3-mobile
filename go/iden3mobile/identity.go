@@ -1,9 +1,11 @@
 package iden3mobile
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"path"
 	"time"
@@ -11,9 +13,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/iden3/go-iden3-core/components/idenpuboffchain/readerhttp"
 	"github.com/iden3/go-iden3-core/components/idenpubonchain"
+	"github.com/iden3/go-iden3-core/core/claims"
+	"github.com/iden3/go-iden3-core/core/proof"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/identity/holder"
 	babykeystore "github.com/iden3/go-iden3-core/keystore"
+	"github.com/iden3/go-iden3-core/merkletree"
+	zkutils "github.com/iden3/go-iden3-core/utils/zk"
 	"github.com/iden3/go-iden3-crypto/babyjub"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	verifierMsg "github.com/iden3/go-iden3-servers-demo/servers/verifier/messages"
@@ -21,13 +27,14 @@ import (
 )
 
 type Identity struct {
-	id          *holder.Holder
-	storage     db.Storage
-	keyStore    *babykeystore.KeyStore
-	ClaimDB     *ClaimDB
-	Tickets     *Tickets
-	stopTickets chan bool
-	eventMan    *EventManager
+	id            *holder.Holder
+	baseStorePath string
+	storage       db.Storage
+	keyStore      *babykeystore.KeyStore
+	ClaimDB       *ClaimDB
+	Tickets       *Tickets
+	stopTickets   chan bool
+	eventMan      *EventManager
 }
 
 const (
@@ -39,6 +46,7 @@ const (
 	credExisPrefix       = "credExis"
 	folderStore          = "store"
 	folderKeyStore       = "keystore"
+	folderZKArtifacts    = "ZKArtifacts"
 )
 
 func isEmpty(path string) (bool, error) {
@@ -74,6 +82,10 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 		if err == nil {
 			err = errors.New("Directory is not empty")
 		}
+		return nil, err
+	}
+	ZKPath := path.Join(storePath, folderZKArtifacts)
+	if err := os.Mkdir(ZKPath, 0700); err != nil {
 		return nil, err
 	}
 	storagePath := path.Join(storePath, folderStore)
@@ -195,13 +207,14 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 
 	// Init Identity
 	iden := &Identity{
-		id:          holdr,
-		storage:     storage,
-		keyStore:    keyStore,
-		Tickets:     NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
-		stopTickets: make(chan bool),
-		eventMan:    em,
-		ClaimDB:     NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
+		id:            holdr,
+		storage:       storage,
+		baseStorePath: storePath,
+		keyStore:      keyStore,
+		Tickets:       NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
+		stopTickets:   make(chan bool),
+		eventMan:      em,
+		ClaimDB:       NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
 	go iden.Tickets.CheckPending(iden, eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
@@ -252,17 +265,11 @@ func (i *Identity) RequestClaimWithCb(baseUrl, data string, c CallbackRequestCla
 	go func() { c.Fn(i.RequestClaim(baseUrl, data)) }()
 }
 
-// ProveCredential sends a credentialValidity build from the given credentialExistance to a verifier
+// ProveClaim sends a credentialValidity build from the given credentialExistance to a verifier
 // the callback is used to check if the verifier has accepted the credential as valid
 func (i *Identity) ProveClaim(baseUrl string, credID string) (bool, error) {
-	// TODO: add context
-	// Get credential existance
-	credExis, err := i.ClaimDB.GetCredExist(credID)
-	if err != nil {
-		return false, err
-	}
 	// Build credential validity
-	credVal, err := i.id.HolderGetCredentialValidity(credExis)
+	credVal, err := i.getCredentialValidity(credID)
 	if err != nil {
 		return false, err
 	}
@@ -277,6 +284,89 @@ func (i *Identity) ProveClaim(baseUrl string, credID string) (bool, error) {
 	}
 	// Success
 	return true, nil
+}
+
+// ProveClaimZK sends a credentialValidity build from the given credentialExistance to a verifier.
+// This method will generate a zero knowledge proof so the verifier can't see the content of the claim.
+// The callback is used to check if the verifier has accepted the credential as valid
+func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
+	// Get credential existance
+	credExis, err := i.ClaimDB.GetCredExist(credID)
+	if err != nil {
+		return false, err
+	}
+
+	// Build credential ownership zk proof
+	// WARNING: this is a hardcoded proof generation for a specific claim/circuit.
+	// In the future we will add some mechanism that can deduce how to generate an arbitrary proof.
+	addInputs := func(claim *merkletree.Entry) func(inputs map[string]interface{}) error {
+		return func(inputs map[string]interface{}) error {
+			var metadata claims.Metadata
+			metadata.Unmarshal(claim)
+			data := claim.Data
+			inputs["claimI2_3"] = []*big.Int{data[0*4+2].BigInt(), data[0*4+3].BigInt()}
+			inputs["claimV1_3"] = []*big.Int{data[1*4+1].BigInt(), data[1*4+2].BigInt(), data[1*4+3].BigInt()}
+			inputs["id"] = i.id.ID().BigInt()
+			inputs["revNonce"] = new(big.Int).SetUint64(uint64(metadata.RevNonce))
+
+			// DBG BEGIN
+			in, err := zkutils.InputsToMapStrings(inputs)
+			if err != nil {
+				return err
+			}
+			inJSON, err := json.MarshalIndent(in, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(inJSON))
+			// DBG END
+
+			return nil
+		}
+	}
+	zkProofCredOut, err := i.id.HolderGenZkProofCredential(
+		credExis,
+		addInputs(credExis.Claim),
+		4,
+		16,
+		zkutils.NewZkFiles(
+			baseUrl+"credentialDemo/artifacts",
+			path.Join(i.baseStorePath, folderZKArtifacts),
+			zkutils.ZkFilesHashes{
+				ProvingKey:      "6d5bbfe45f36c0a9263df0236292d4d7fa4e081fa80a7801fdaefc00171a83ed",
+				VerificationKey: "12a730890e85e33d8bf0f2e54db41dcff875c2dc49011d7e2a283185f47ac0de",
+				WitnessCalcWASM: "6b3c28c4842e04129674eb71dc84d76dd8b290c84987929d54d890b7b8bed211",
+			},
+			false,
+		),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	// Send the CredentialValidity proof to Verifier
+	httpClient := NewHttpClient(baseUrl)
+	reqVerifyZkp := verifierMsg.ReqVerifyZkp{
+		ZkProof:         &zkProofCredOut.ZkProofOut.Proof,
+		PubSignals:      zkProofCredOut.ZkProofOut.PubSignals,
+		IssuerID:        zkProofCredOut.IssuerID,
+		IdenStateBlockN: zkProofCredOut.IdenStateBlockN,
+	}
+	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
+		"credentialDemo/verifyzkp").Post("").BodyJSON(&reqVerifyZkp), nil); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (i *Identity) getCredentialValidity(credID string) (*proof.CredentialValidity, error) {
+	// Get credential existance
+	credExis, err := i.ClaimDB.GetCredExist(credID)
+	if err != nil {
+		return nil, err
+	}
+	// Build credential validity
+	return i.id.HolderGetCredentialValidity(credExis)
 }
 
 type CallbackProveClaim interface {
