@@ -82,6 +82,9 @@ func TestHolderHandlers(t *testing.T) {
 
 	expectedEvents = make(map[string]testEvent)
 	// Create two new identities without extra claims
+	sharedDir, err := ioutil.TempDir("", "shared")
+	require.Nil(t, err)
+	rmDirs = append(rmDirs, sharedDir)
 	dir1, err := ioutil.TempDir("", "holderTest1")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir1)
@@ -89,24 +92,24 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
-	id1, err := NewIdentityTest(dir1, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id1, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
-	id2, err := NewIdentityTest(dir2, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id2, err := NewIdentityTest(dir2, sharedDir, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Request claim
-	t1, err := id1.RequestClaim(c.IssuerUrl, randomBase64String(80))
+	t1, err := id1.RequestClaim(c.IssuerUrl, randomBase64String(16))
 	require.Nil(t, err)
 	expectedEvents[t1.Id] = testEvent{Typ: t1.Type}
 
-	t2, err := id2.RequestClaim(c.IssuerUrl, randomBase64String(80))
+	t2, err := id2.RequestClaim(c.IssuerUrl, randomBase64String(16))
 	require.Nil(t, err)
 	expectedEvents[t2.Id] = testEvent{Typ: t2.Type}
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityTestLoad(dir1, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, nil)
+	id1, err = NewIdentityTestLoad(dir1, sharedDir, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
-	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, nil)
+	id2, err = NewIdentityTestLoad(dir2, sharedDir, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
 	nAtempts := 1000 // TODO: go back to 10 atempts
@@ -124,11 +127,11 @@ func TestHolderHandlers(t *testing.T) {
 	require.NoError(t, err)
 	// Prove Claims with ZK
 	isSuccess, err = id1.ProveClaimZK(c.VerifierUrl, id1ClaimID[:])
-	require.True(t, isSuccess)
 	require.NoError(t, err)
+	require.True(t, isSuccess)
 	isSuccess, err = id2.ProveClaimZK(c.VerifierUrl, id2ClaimID[:])
-	require.True(t, isSuccess)
 	require.NoError(t, err)
+	require.True(t, isSuccess)
 	// Stop identities
 	id1.Stop()
 	id2.Stop()
@@ -209,7 +212,9 @@ func TestStressIdentity(t *testing.T) {
 		)
 		time.Sleep(200 * time.Millisecond)
 	}
-
+	sharedDir, err := ioutil.TempDir("", "shared")
+	require.Nil(t, err)
+	rmDirs = append(rmDirs, sharedDir)
 	dir1, err := ioutil.TempDir("", "holderStressTest")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir1)
@@ -222,7 +227,7 @@ func TestStressIdentity(t *testing.T) {
 	}
 	claimsLen := n * m
 	testStressIdentityWg.Add(claimsLen)
-	iden, err := NewIdentityTest(dir1, "pass_TestHolder_1", c.Web3Url, 400, NewBytesArray(), ha)
+	iden, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", c.Web3Url, 400, NewBytesArray(), ha)
 	require.Nil(t, err)
 
 	// Request claims

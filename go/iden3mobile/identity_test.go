@@ -73,8 +73,8 @@ var timeBlock TimeBlock
 func TestMain(m *testing.M) {
 	c = config{
 		Web3Url:             "xxx",
-		IssuerUrl:           "http://127.0.0.1:6100/api/unstable/",
-		VerifierUrl:         "http://127.0.0.1:6200/api/unstable/",
+		IssuerUrl:           "http://188.166.70.93:6100/api/unstable/",
+		VerifierUrl:         "http://188.166.70.93:6200/api/unstable/",
 		VerifierAttempts:    5,
 		VerifierRetryPeriod: 6,
 		HolderTicketPeriod:  1000,
@@ -101,7 +101,7 @@ func (teh *testEventHandler) Send(ev *Event) {
 }
 
 // NewIdentityTest is like NewIdentity but uses a local implementation of the smart contract in idenPubOnChain
-func NewIdentityTest(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, s Sender) (*Identity, error) {
+func NewIdentityTest(storePath, sharedStorePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, s Sender) (*Identity, error) {
 	if s == nil {
 		s = &testEventHandler{}
 	}
@@ -110,11 +110,11 @@ func NewIdentityTest(storePath, pass, web3Url string, checkTicketsPeriodMilis in
 	if err != nil {
 		panic(err)
 	}
-	return newIdentity(storePath, pass, tmpIdenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, s)
+	return newIdentity(storePath, sharedStorePath, pass, tmpIdenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, s)
 }
 
 // NewIdentityTestLoad is like NewIdentityLoad but uses a local implementation of the smart contract in idenPubOnChain
-func NewIdentityTestLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int, s Sender) (*Identity, error) {
+func NewIdentityTestLoad(storePath, sharedStorePath, pass, web3Url string, checkTicketsPeriodMilis int, s Sender) (*Identity, error) {
 	if s == nil {
 		s = &testEventHandler{}
 	}
@@ -123,23 +123,26 @@ func NewIdentityTestLoad(storePath, pass, web3Url string, checkTicketsPeriodMili
 	if err != nil {
 		panic(err)
 	}
-	return newIdentityLoad(storePath, pass, tmpIdenPubOnChain, checkTicketsPeriodMilis, s)
+	return newIdentityLoad(storePath, sharedStorePath, pass, tmpIdenPubOnChain, checkTicketsPeriodMilis, s)
 }
 
 func TestNewIdentity(t *testing.T) {
 	// New identity without extra claims
+	sharedDir, err := ioutil.TempDir("", "shared")
+	require.Nil(t, err)
+	rmDirs = append(rmDirs, sharedDir)
 	dir1, err := ioutil.TempDir("", "identityTest")
 	rmDirs = append(rmDirs, dir1)
 	require.Nil(t, err)
-	id, err := NewIdentityTest(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id, err := NewIdentityTest(dir1, sharedDir, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
 	// Error when creating new identity on a non empty dir
-	_, err = NewIdentityTest(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	_, err = NewIdentityTest(dir1, sharedDir, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Error(t, err)
 	// Load identity
-	id, err = NewIdentityTestLoad(dir1, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, nil)
+	id, err = NewIdentityTestLoad(dir1, sharedDir, "pass_TestNewIdentity", c.Web3Url, c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Stop identity
 	id.Stop()
