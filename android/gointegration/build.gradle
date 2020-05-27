@@ -2,6 +2,12 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
+buildscript {
+    ext {
+        iden3mobile_version = 'v0.0.1-beta12'
+    }
+}
+
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.2"
@@ -15,6 +21,7 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         // Infura config
         Properties infuraProperties = new Properties()
         InputStream ins = new FileInputStream("infura.properties")
@@ -31,26 +38,32 @@ android {
     }
 
     repositories {
-        flatDir{
-            dirs 'src/libs'
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/iden3/iden3-mobile")
+            credentials {
+                Properties githubProperties = new Properties()
+                InputStream ins = new FileInputStream("github.properties")
+                githubProperties.load(ins)
+                ins.close()
+                username = githubProperties['username']
+                password = githubProperties['apikey']
+            }
         }
     }
-
 }
 
 dependencies {
-        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-        implementation 'androidx.appcompat:appcompat:1.1.0'
-        implementation 'androidx.core:core-ktx:1.2.0'
-        implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
 
-        androidTestImplementation 'androidx.test:core:1.2.0'
-        androidTestImplementation 'androidx.test:core-ktx:1.2.0'
-        androidTestImplementation 'androidx.test.ext:junit:1.1.1'
-        androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.1'
-        androidTestImplementation 'androidx.test:runner:1.2.0'
-        androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-
-        api(name:'iden3mobile', ext:'aar')
+    androidTestImplementation 'androidx.test:core:1.2.0'
+    androidTestImplementation 'androidx.test:core-ktx:1.2.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.1'
+    androidTestImplementation 'androidx.test:runner:1.2.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation "com.iden3:iden3mobile:$iden3mobile_version"
 }
-
