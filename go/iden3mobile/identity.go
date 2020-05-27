@@ -43,7 +43,7 @@ const (
 	storageSubPath       = "/idStore"
 	keyStorageSubPath    = "/idKeyStore"
 	smartContractAddress = "0x4cd72fcedf61937ffc8995d7c0839c976f3cc129"
-	credExisPrefix       = "credExis"
+	credExistPrefix      = "credExist"
 	folderStore          = "store"
 	folderKeyStore       = "keystore"
 	folderZKArtifacts    = "ZKArtifacts"
@@ -214,7 +214,7 @@ func newIdentityLoad(storePath, sharedStorePath, pass string, idenPubOnChain ide
 		Tickets:         NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
 		stopTickets:     make(chan bool),
 		eventMan:        em,
-		ClaimDB:         NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
+		ClaimDB:         NewClaimDB(storage.WithPrefix([]byte(credExistPrefix))),
 	}
 	go iden.Tickets.CheckPending(iden, eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
@@ -293,12 +293,12 @@ func (i *Identity) ProveClaim(baseUrl string, credID string) (bool, error) {
 
 func (i *Identity) getCredentialValidity(credID string) (*proof.CredentialValidity, error) {
 	// Get credential existance
-	credExis, err := i.ClaimDB.GetCredExist(credID)
+	credExist, err := i.ClaimDB.GetCredExist(credID)
 	if err != nil {
 		return nil, err
 	}
 	// Build credential validity
-	return i.id.HolderGetCredentialValidity(credExis)
+	return i.id.HolderGetCredentialValidity(credExist)
 }
 
 // CallbackProveClaim is a interface used to get an asynchronous response from
@@ -318,10 +318,18 @@ func (i *Identity) ProveClaimWithCb(baseUrl string, credID string, c CallbackPro
 // The response should be true if the verified accepted the prove as valid.
 func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 	// Get credential existance
-	credExis, err := i.ClaimDB.GetCredExist(credID)
+	credExist, err := i.ClaimDB.GetCredExist(credID)
 	if err != nil {
 		return false, err
 	}
+
+	// DBG BEGIN
+	// claimHex := make([]string, 8)
+	// for i := 0; i < 8; i++ {
+	// 	claimHex[i] = hex.EncodeToString(credExist.Claim.Data[i][:])
+	// }
+	// log.WithField("claim", claimHex).Debug("ProveClaimZK")
+	// DBG END
 
 	// Build credential ownership zk proof
 	// WARNING: this is a hardcoded proof generation for a specific claim/circuit.
@@ -357,8 +365,8 @@ func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 		return false, err
 	}
 	zkProofCredOut, err := i.id.HolderGenZkProofCredential(
-		credExis,
-		addInputs(credExis.Claim),
+		credExist,
+		addInputs(credExist.Claim),
 		4,
 		16,
 		zkutils.NewZkFiles(

@@ -20,7 +20,7 @@ require (
 	github.com/iden3/go-iden3-core v0.0.8-0.20200526144704-bcd52448a585
 	github.com/iden3/go-iden3-crypto v0.0.5-0.20200525100545-2c471ab54594
 	github.com/iden3/go-iden3-servers v0.0.2-0.20200525092853-167fda8ae7d9
-	github.com/iden3/go-iden3-servers-demo v0.0.2-0.20200525093013-a63e86dc4ed2
+	github.com/iden3/go-iden3-servers-demo v0.0.2-0.20200526103419-f7ca2547ec7b
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
