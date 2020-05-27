@@ -59,26 +59,28 @@ func holderEventHandler(ev *Event) {
 
 func TestHolderHandlers(t *testing.T) {
 	// Sync idenPubOnChain every 2 seconds
-	// go func() {
-	// 	for {
-	// 		log.Info("idenPubOnChain.Sync()")
-	// 		timeBlock.AddTime(10)
-	// 		timeBlock.AddBlock(1)
-	// 		idenPubOnChain.Sync()
-	// 		time.Sleep(2 * time.Second)
-	// 	}
-	// }()
+	go func() {
+		for {
+			log.Info("idenPubOnChain.Sync()")
+			timeBlock.AddTime(100)
+			timeBlock.AddBlock(10)
+			idenPubOnChain.Sync()
+			time.Sleep(2 * time.Second)
+		}
+	}()
 
 	// // Start mockup server
-	// server := mockupserver.Serve(t, &mockupserver.Conf{
-	// 	IP:                "127.0.0.1",
-	// 	Port:              "1234",
-	// 	TimeToAproveClaim: 1 * time.Second,
-	// 	TimeToPublish:     2 * time.Second,
-	// },
-	// 	idenPubOnChain,
-	// )
-	// time.Sleep(1 * time.Second)
+	server := mockupserver.Serve(t, &mockupserver.Conf{
+		IP:                "127.0.0.1",
+		Port:              "1234",
+		TimeToAproveClaim: 1 * time.Second,
+		TimeToPublish:     2 * time.Second,
+	},
+		idenPubOnChain,
+		zkFilesIdenState,
+		zkFilesCredential,
+	)
+	time.Sleep(1 * time.Second)
 
 	expectedEvents = make(map[string]testEvent)
 	// Create two new identities without extra claims
@@ -92,9 +94,11 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
-	id1, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id1, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", idenPubOnChain,
+		c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
-	id2, err := NewIdentityTest(dir2, sharedDir, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id2, err := NewIdentityTest(dir2, sharedDir, "pass_TestHolder_2", idenPubOnChain,
+		c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Request claim
 	t1, err := id1.RequestClaim(c.IssuerUrl, randomBase64String(16))
@@ -107,9 +111,11 @@ func TestHolderHandlers(t *testing.T) {
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityTestLoad(dir1, sharedDir, "pass_TestHolder_1", c.Web3Url, c.HolderTicketPeriod, nil)
+	id1, err = NewIdentityTestLoad(dir1, sharedDir, "pass_TestHolder_1", idenPubOnChain,
+		c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
-	id2, err = NewIdentityTestLoad(dir2, sharedDir, "pass_TestHolder_2", c.Web3Url, c.HolderTicketPeriod, nil)
+	id2, err = NewIdentityTestLoad(dir2, sharedDir, "pass_TestHolder_2", idenPubOnChain,
+		c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
 	nAtempts := 1000 // TODO: go back to 10 atempts
@@ -136,8 +142,8 @@ func TestHolderHandlers(t *testing.T) {
 	id1.Stop()
 	id2.Stop()
 
-	// err = server.Shutdown(context.Background())
-	// require.Nil(t, err)
+	err = server.Shutdown(context.Background())
+	require.Nil(t, err)
 }
 
 func randomBase64String(l int) string {
@@ -209,6 +215,8 @@ func TestStressIdentity(t *testing.T) {
 			TimeToPublish:     500 * time.Millisecond,
 		},
 			idenPubOnChain,
+			zkFilesIdenState,
+			zkFilesCredential,
 		)
 		time.Sleep(200 * time.Millisecond)
 	}
@@ -227,7 +235,7 @@ func TestStressIdentity(t *testing.T) {
 	}
 	claimsLen := n * m
 	testStressIdentityWg.Add(claimsLen)
-	iden, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", c.Web3Url, 400, NewBytesArray(), ha)
+	iden, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", idenPubOnChain, 400, NewBytesArray(), ha)
 	require.Nil(t, err)
 
 	// Request claims
@@ -236,7 +244,7 @@ func TestStressIdentity(t *testing.T) {
 		for _j := 0; _j < m; _j++ {
 			j := _j
 			go func() {
-				t1, err := iden.RequestClaim(fmt.Sprintf("http://127.0.0.1:9%03d/", i), randomBase64String(80))
+				t1, err := iden.RequestClaim(fmt.Sprintf("http://127.0.0.1:9%03d/", i), randomBase64String(16))
 				require.Nil(t, err)
 				log.WithField("TicketId", t1.Id).WithField("i", i).WithField("j", j).Info("--- Request claim ---")
 				mutex.Lock()
@@ -266,21 +274,10 @@ func TestStressIdentity(t *testing.T) {
 		wg.Add(1)
 		id := _id
 		go func() {
-			i := 0
-			for ; i < c.VerifierAttempts; i++ {
-				success1, err := iden.ProveClaim("http://127.0.0.1:9000", id)
-				if err != nil {
-					log.Error("Error proving claim: ", err)
-				}
-				if success1 {
-					wg.Done()
-					break
-				}
-				time.Sleep(time.Duration(400 * time.Millisecond))
-			}
-			if i == c.VerifierAttempts {
-				panic(fmt.Errorf("Reached maximum number of loops for iden.ProveClaim"))
-			}
+			success1, err := iden.ProveClaim("http://127.0.0.1:9000", id)
+			require.Nil(t, err)
+			require.True(t, success1)
+			wg.Done()
 		}()
 		if k >= 16 {
 			time.Sleep(200 * time.Millisecond)
