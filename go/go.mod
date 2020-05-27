@@ -16,11 +16,11 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/websocket v1.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/iden3/go-circom-prover-verifier v0.0.0-20200515100033-bedd64cc7062
-	github.com/iden3/go-iden3-core v0.0.8-0.20200515134003-99b3cc33f463
-	github.com/iden3/go-iden3-crypto v0.0.5-0.20200428163115-b1468fc0760f
-	github.com/iden3/go-iden3-servers v0.0.2-0.20200518153723-bac79e820d3b
-	github.com/iden3/go-iden3-servers-demo v0.0.2-0.20200519120403-69bcf6757ab3
+	github.com/iden3/go-circom-prover-verifier v0.0.0-20200522153011-ec6920aa1169
+	github.com/iden3/go-iden3-core v0.0.8-0.20200526144704-bcd52448a585
+	github.com/iden3/go-iden3-crypto v0.0.5-0.20200525100545-2c471ab54594
+	github.com/iden3/go-iden3-servers v0.0.2-0.20200525092853-167fda8ae7d9
+	github.com/iden3/go-iden3-servers-demo v0.0.2-0.20200525093013-a63e86dc4ed2
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect

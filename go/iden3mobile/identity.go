@@ -27,14 +27,14 @@ import (
 )
 
 type Identity struct {
-	id            *holder.Holder
-	baseStorePath string
-	storage       db.Storage
-	keyStore      *babykeystore.KeyStore
-	ClaimDB       *ClaimDB
-	Tickets       *Tickets
-	stopTickets   chan bool
-	eventMan      *EventManager
+	id              *holder.Holder
+	sharedStorePath string
+	storage         db.Storage
+	keyStore        *babykeystore.KeyStore
+	ClaimDB         *ClaimDB
+	Tickets         *Tickets
+	stopTickets     chan bool
+	eventMan        *EventManager
 }
 
 const (
@@ -67,15 +67,15 @@ func isEmpty(path string) (bool, error) {
 // this funciton is mapped as a constructor in Java.
 // NOTE: The storePath must be unique per Identity.
 // NOTE: Right now the extraGenesisClaims is useless.
-func NewIdentity(storePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, eventHandler Sender) (*Identity, error) {
+func NewIdentity(storePath, sharedStorePath, pass, web3Url string, checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, eventHandler Sender) (*Identity, error) {
 	idenPubOnChain, err := loadIdenPubOnChain(web3Url)
 	if err != nil {
 		return nil, err
 	}
-	return newIdentity(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, eventHandler)
+	return newIdentity(storePath, sharedStorePath, pass, idenPubOnChain, checkTicketsPeriodMilis, extraGenesisClaims, eventHandler)
 }
 
-func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer,
+func newIdentity(storePath, sharedStorePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer,
 	checkTicketsPeriodMilis int, extraGenesisClaims *BytesArray, eventHandler Sender) (*Identity, error) {
 	// Check that storePath points to an empty dir
 	if dirIsEmpty, err := isEmpty(storePath); !dirIsEmpty || err != nil {
@@ -84,8 +84,8 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 		}
 		return nil, err
 	}
-	ZKPath := path.Join(storePath, folderZKArtifacts)
-	if err := os.Mkdir(ZKPath, 0700); err != nil {
+	ZKPath := path.Join(sharedStorePath, folderZKArtifacts)
+	if err := os.MkdirAll(ZKPath, 0700); err != nil {
 		return nil, err
 	}
 	storagePath := path.Join(storePath, folderStore)
@@ -157,20 +157,20 @@ func newIdentity(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOn
 	}
 	storage.Close()
 	resourcesAreClosed = true
-	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, eventHandler)
+	return newIdentityLoad(storePath, sharedStorePath, pass, idenPubOnChain, checkTicketsPeriodMilis, eventHandler)
 }
 
 // NewIdentityLoad loads an already created identity
 // this funciton is mapped as a constructor in Java
-func NewIdentityLoad(storePath, pass, web3Url string, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
+func NewIdentityLoad(storePath, sharedStorePath, pass, web3Url string, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
 	idenPubOnChain, err := loadIdenPubOnChain(web3Url)
 	if err != nil {
 		return nil, err
 	}
-	return newIdentityLoad(storePath, pass, idenPubOnChain, checkTicketsPeriodMilis, eventHandler)
+	return newIdentityLoad(storePath, sharedStorePath, pass, idenPubOnChain, checkTicketsPeriodMilis, eventHandler)
 }
 
-func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
+func newIdentityLoad(storePath, sharedStorePath, pass string, idenPubOnChain idenpubonchain.IdenPubOnChainer, checkTicketsPeriodMilis int, eventHandler Sender) (*Identity, error) {
 	// TODO: figure out how to diferentiate the two constructors from Java: https://github.com/iden3/iden3-mobile/issues/17#issuecomment-587374644
 	storage, err := loadStorage(path.Join(storePath, folderStore))
 	if err != nil {
@@ -207,14 +207,14 @@ func newIdentityLoad(storePath, pass string, idenPubOnChain idenpubonchain.IdenP
 
 	// Init Identity
 	iden := &Identity{
-		id:            holdr,
-		storage:       storage,
-		baseStorePath: storePath,
-		keyStore:      keyStore,
-		Tickets:       NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
-		stopTickets:   make(chan bool),
-		eventMan:      em,
-		ClaimDB:       NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
+		id:              holdr,
+		storage:         storage,
+		sharedStorePath: sharedStorePath,
+		keyStore:        keyStore,
+		Tickets:         NewTickets(storage.WithPrefix([]byte(ticketPrefix))),
+		stopTickets:     make(chan bool),
+		eventMan:        em,
+		ClaimDB:         NewClaimDB(storage.WithPrefix([]byte(credExisPrefix))),
 	}
 	go iden.Tickets.CheckPending(iden, eventQueue, time.Duration(checkTicketsPeriodMilis)*time.Millisecond, iden.stopTickets)
 	return iden, nil
@@ -233,6 +233,10 @@ func (i *Identity) Stop() {
 // This function will eventually trigger an event,
 // the returned ticket can be used to reference the event
 func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
+	// Warning: This only applies to the current used claim!
+	if len(data) > 16 {
+		return nil, errors.New("The data string cannot be longer than 16 chars")
+	}
 	id := uuid.New().String()
 	t := &Ticket{
 		Id:     id,
@@ -244,6 +248,7 @@ func (i *Identity) RequestClaim(baseUrl, data string) (*Ticket, error) {
 	if err := httpClient.DoRequest(httpClient.NewRequest().Path(
 		"claim/request").Post("").BodyJSON(&issuerMsg.ReqClaimRequest{
 		Value:    data,
+		Index:    data,
 		HolderID: i.id.ID(),
 	}), &res); err != nil {
 		return nil, err
@@ -265,8 +270,8 @@ func (i *Identity) RequestClaimWithCb(baseUrl, data string, c CallbackRequestCla
 	go func() { c.Fn(i.RequestClaim(baseUrl, data)) }()
 }
 
-// ProveClaim sends a credentialValidity build from the given credentialExistance to a verifier
-// the callback is used to check if the verifier has accepted the credential as valid
+// ProveClaim sends a credentialValidity build from the given credentialExistance to a verifier.
+// The response should be true if the verified accepted the prove as valid
 func (i *Identity) ProveClaim(baseUrl string, credID string) (bool, error) {
 	// Build credential validity
 	credVal, err := i.getCredentialValidity(credID)
@@ -286,9 +291,31 @@ func (i *Identity) ProveClaim(baseUrl string, credID string) (bool, error) {
 	return true, nil
 }
 
+func (i *Identity) getCredentialValidity(credID string) (*proof.CredentialValidity, error) {
+	// Get credential existance
+	credExis, err := i.ClaimDB.GetCredExist(credID)
+	if err != nil {
+		return nil, err
+	}
+	// Build credential validity
+	return i.id.HolderGetCredentialValidity(credExis)
+}
+
+// CallbackProveClaim is a interface used to get an asynchronous response from
+// ProveClaimWithCb and ProveClaimZKWithCb
+type CallbackProveClaim interface {
+	Fn(bool, error)
+}
+
+// ProveClaimWithCb sends a credentialValidity build from the given credentialExistance to a verifier.
+// The callback is used to check if the verifier has accepted the credential as valid in an async maner
+func (i *Identity) ProveClaimWithCb(baseUrl string, credID string, c CallbackProveClaim) {
+	go func() { c.Fn(i.ProveClaim(baseUrl, credID)) }()
+}
+
 // ProveClaimZK sends a credentialValidity build from the given credentialExistance to a verifier.
 // This method will generate a zero knowledge proof so the verifier can't see the content of the claim.
-// The callback is used to check if the verifier has accepted the credential as valid
+// The response should be true if the verified accepted the prove as valid.
 func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 	// Get credential existance
 	credExis, err := i.ClaimDB.GetCredExist(credID)
@@ -299,6 +326,7 @@ func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 	// Build credential ownership zk proof
 	// WARNING: this is a hardcoded proof generation for a specific claim/circuit.
 	// In the future we will add some mechanism that can deduce how to generate an arbitrary proof.
+	proofName := "claimDemo"
 	addInputs := func(claim *merkletree.Entry) func(inputs map[string]interface{}) error {
 		return func(inputs map[string]interface{}) error {
 			var metadata claims.Metadata
@@ -324,6 +352,10 @@ func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 			return nil
 		}
 	}
+	ZKPath := path.Join(i.sharedStorePath, folderZKArtifacts, proofName)
+	if err := os.MkdirAll(ZKPath, 0700); err != nil {
+		return false, err
+	}
 	zkProofCredOut, err := i.id.HolderGenZkProofCredential(
 		credExis,
 		addInputs(credExis.Claim),
@@ -331,9 +363,10 @@ func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 		16,
 		zkutils.NewZkFiles(
 			baseUrl+"credentialDemo/artifacts",
-			path.Join(i.baseStorePath, folderZKArtifacts),
+			ZKPath,
+			zkutils.ProvingKeyFormatGoBin,
 			zkutils.ZkFilesHashes{
-				ProvingKey:      "6d5bbfe45f36c0a9263df0236292d4d7fa4e081fa80a7801fdaefc00171a83ed",
+				ProvingKey:      "bdefc89d07d1dfab75c43f09aedb9da876496c5c3967383337482e4c5ae4f7d3",
 				VerificationKey: "12a730890e85e33d8bf0f2e54db41dcff875c2dc49011d7e2a283185f47ac0de",
 				WitnessCalcWASM: "6b3c28c4842e04129674eb71dc84d76dd8b290c84987929d54d890b7b8bed211",
 			},
@@ -359,20 +392,9 @@ func (i *Identity) ProveClaimZK(baseUrl string, credID string) (bool, error) {
 	return true, nil
 }
 
-func (i *Identity) getCredentialValidity(credID string) (*proof.CredentialValidity, error) {
-	// Get credential existance
-	credExis, err := i.ClaimDB.GetCredExist(credID)
-	if err != nil {
-		return nil, err
-	}
-	// Build credential validity
-	return i.id.HolderGetCredentialValidity(credExis)
-}
-
-type CallbackProveClaim interface {
-	Fn(bool, error)
-}
-
-func (i *Identity) ProveClaimWithCb(baseUrl string, credID string, c CallbackProveClaim) {
-	go func() { c.Fn(i.ProveClaim(baseUrl, credID)) }()
+// ProveClaimZKWithCb sends a credentialValidity build from the given credentialExistance to a verifier.
+// This method will generate a zero knowledge proof so the verifier can't see the content of the claim.
+// The callback is used to check if the verifier has accepted the credential as valid in an async maner
+func (i *Identity) ProveClaimZKWithCb(baseUrl string, credID string, c CallbackProveClaim) {
+	go func() { c.Fn(i.ProveClaimZK(baseUrl, credID)) }()
 }
