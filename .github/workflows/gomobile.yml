@@ -7,7 +7,7 @@ on:
     - go/**
 
 jobs:
-  build:
+  bind-go-android:
     name: Gomobile
     runs-on: ubuntu-latest
     steps:
@@ -16,7 +16,7 @@ jobs:
     - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
 
     - name: Build
-      id: build
+      id: bind-android
       run: |
         mkdir -p /tmp/builds
         docker pull ed255/gomobile-android:API29-noemu
@@ -71,8 +71,8 @@ jobs:
         tag_name: ${{ steps.next_version.outputs.version }}
         release_name: Release ${{ steps.next_version.outputs.version }}
         body: |
-          * SHA256 (iden3mobile.aar) = `${{ steps.build.outputs.sha256_aar }}`
-          * SHA256 (iden3mobile-sources.jar) = `${{ steps.build.outputs.sha256_jar }}`
+          * SHA256 (iden3mobile.aar) = `${{ steps.bind-android.outputs.sha256_aar }}`
+          * SHA256 (iden3mobile-sources.jar) = `${{ steps.bind-android.outputs.sha256_jar }}`
         draft: false
         prerelease: true
 
@@ -106,3 +106,36 @@ jobs:
         mvn deploy:deploy-file -Dfile=iden3mobile.aar -Durl=https://maven.pkg.github.com/iden3/iden3-mobile -DrepositoryId=github -DrepositoryName="GitHub Pages" -Dfiles=iden3mobile-sources.jar -Dtypes=jar -Dclassifiers=sources -DgroupId=com.iden3 -DartifactId=iden3mobile -Dversion="${{ steps.next_version.outputs.version }}" -Dpackaging=aar
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  bind-go-ios:
+    name: Test Go
+    runs-on: macos-latest
+    steps:
+
+      - uses: actions/checkout@v2
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+
+      - name: Set up Go 1.14
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.14
+
+      - name: Bind to iOS
+        run: |
+          go get golang.org/x/mobile/cmd/gomobile
+          PATH=$PATH:/Users/runner/go/bin
+          export PATH
+          cd go/iden3mobile
+          mkdir -p /tmp/build
+          gomobile init
+          gomobile bind --target ios -o /tmp/build/Iden3mobile.framework
+
+      - name: Release framework
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: /tmp/build/Iden3mobile.framework
+          asset_name: Iden3mobile.framework
+          asset_content_type: application/zip
