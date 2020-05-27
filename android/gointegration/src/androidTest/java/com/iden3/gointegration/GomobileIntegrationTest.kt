@@ -27,11 +27,13 @@ class GomobileIntegrationTest {
         val web3Url = BuildConfig.INFURA_URL
         val issuerUrl = "http://188.166.70.93:6100/api/unstable/"
         val verifierUrl = "http://188.166.70.93:6200/api/unstable/"
-
-        // Create a new directory for each identity
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val storePath = appContext.filesDir.absolutePath
+        // Clean and create the shared directory
         val sharedStorePath = appContext.filesDir.absolutePath + "/shared"
+        File(sharedStorePath).deleteRecursively()
+        File(sharedStorePath).mkdirs()
+        // Create a new directory for each identity
+        val storePath = appContext.filesDir.absolutePath
         for (i in 0 until nIdentities){
             // Remove directory in case last test did't finish
             File("$storePath/$i").deleteRecursively()
@@ -73,7 +75,6 @@ class GomobileIntegrationTest {
             for (id in ids){
                 Log.i("fullFlow","REQUESTING CLAIM")
                 val data = random()
-                Log.i("jeje",data)
                 id?.requestClaimWithCb(issuerUrl, data) { ticket, e ->
                     Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED: ${ticket?.id}. $ticketCounter TICKETS RECEIVED SO FAR}")
                     assertNotEquals(null, ticket)
@@ -104,6 +105,7 @@ class GomobileIntegrationTest {
         }
         // Check claims on DB
         assertEquals(nIdentities*nClaimsPerId, countClaims(ids))
+        Log.i("fullFlow", "Claims received. Proving them")
 
         // 3. Prove claims
         var provedClaims = 0
@@ -134,9 +136,11 @@ class GomobileIntegrationTest {
         }
         // Wait untilall claims have been proved with and without ZK
         while (provedClaims < nIdentities*nClaimsPerId*2){
+            Log.i("fullFlow", "Waiting to prove claims: $provedClaims / ${nIdentities*nClaimsPerId*2}")
             Thread.sleep(2_000)
         }
         assertEquals(nClaimsPerId*nIdentities*2, provedClaims)
+        Log.i("fullFlow", "Claims proved")
 
         // Restart identities
         ids = restartIdentities(ids, storePath, sharedStorePath, web3Url, fun (event: Event) {

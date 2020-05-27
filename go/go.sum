@@ -224,6 +224,7 @@ github.com/iden3/go-circom-prover-verifier v0.0.0-20200522153011-ec6920aa1169 h1
 github.com/iden3/go-circom-prover-verifier v0.0.0-20200522153011-ec6920aa1169/go.mod h1:ZGStP/GSsKbIaLEowo7JmqnWgneFAapA4NrZakHcUk4=
 github.com/iden3/go-circom-witnesscalc v0.0.0-20200429093613-a13396c6e429 h1:UTGpt2GCsNNC2sSYS6iBUDnR75HiCkogHdVSI2JyUsk=
 github.com/iden3/go-circom-witnesscalc v0.0.0-20200429093613-a13396c6e429/go.mod h1:c3FEU+iwM55k0lvzpwkCk5ljmv+gV2nnkCVHiuUDxFo=
+github.com/iden3/go-circom-witnesscalc v0.0.0-20200527122314-25592ab9b33b h1:+nQkFL1RdUjAUT9C59K/qyZ+5xOGqjFkAGOZYqijOJ0=
 github.com/iden3/go-circom-witnesscalc v0.0.0-20200527122314-25592ab9b33b/go.mod h1:hfw0CzjWlsvZOtOxXsiet+ZuN5YJCSNKvOa4VSsjjvI=
 github.com/iden3/go-iden3-core v0.0.8-0.20200515134003-99b3cc33f463 h1:faZIi4aAYXgsSrF9uevL+eI1JnZ1vE0aFu3AU8Vuedk=
 github.com/iden3/go-iden3-core v0.0.8-0.20200515134003-99b3cc33f463/go.mod h1:mMnPlXVspF49lxOb7/fqp7VCfD/YYEBvAjnUt+dkM8s=
@@ -519,6 +520,7 @@ golang.org/x/mobile v0.0.0-20200329125638-4c31acba0007 h1:JxsyO7zPDWn1rBZW8FV5RF
 golang.org/x/mobile v0.0.0-20200329125638-4c31acba0007/go.mod h1:skQtrUTUwhdJvXM/2KKJzY8pDgNr9I/FOMqDVRPBUS4=
 golang.org/x/mod v0.1.0/go.mod h1:0QHyrYULN0/3qlju5TqG8bIK38QM8yzMo5ekMj3DlcY=
 golang.org/x/mod v0.1.1-0.20191105210325-c90efee705ee/go.mod h1:QqPTAvyqsEbceGzBzNggFXnrqF1CaUcvgkdR5Ot7KZg=
+golang.org/x/mod v0.1.1-0.20191209134235-331c550502dd h1:ePuNC7PZ6O5BzgPn9bZayERXBdfZjUYoXEf5BTfDfh8=
 golang.org/x/mod v0.1.1-0.20191209134235-331c550502dd/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
 golang.org/x/net v0.0.0-20180724234803-3673e40ba225/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20180826012351-8a410e7b638d/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
@@ -592,6 +594,7 @@ golang.org/x/tools v0.0.0-20191119224855-298f0cb1881e/go.mod h1:b+2E5dAYhXwXZwtn
 golang.org/x/tools v0.0.0-20200117012304-6edc0a871e69 h1:yBHHx+XZqXJBm6Exke3N7V9gnlsyXxoCPEb1yVenjfk=
 golang.org/x/tools v0.0.0-20200117012304-6edc0a871e69/go.mod h1:TB2adYChydJhpapKDTa4BR/hXlZSLoq2Wpct/0txZ28=
 golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
+golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898 h1:/atklqdjdhuosWIl6AIbOeHJjicWYPqR9bpxqxYG2pA=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/api v0.3.1/go.mod h1:6wY9I6uQWHQ8EM57III9mq/AjF+i8G65rmVagqKMtkk=
 google.golang.org/appengine v1.1.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9YwlJXL52JkM=
