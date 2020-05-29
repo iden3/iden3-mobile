@@ -51,6 +51,7 @@ func NewHttpClient(urlBase string) *HttpClient {
 	return &HttpClient{HttpClient: *httpclient.NewHttpClient(urlBase)}
 }
 
+// DoRequest performs an HTTP request
 func (p *HttpClient) DoRequest(s *sling.Sling, res interface{}) error {
 	err := p.HttpClient.DoRequest(s, res)
 	switch e := err.(type) {
