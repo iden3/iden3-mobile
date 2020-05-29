@@ -8,8 +8,10 @@ on:
 
 jobs:
   bind-go-android:
-    name: Gomobile
+    name: Release Go binded to Android
     runs-on: ubuntu-latest
+    outputs:
+      release_upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
 
     - uses: actions/checkout@v2
@@ -108,7 +110,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   bind-go-ios:
-    name: Test Go
+    name: Release Go binded to iOS
+    needs: bind-go-android 
     runs-on: macos-latest
     steps:
 
@@ -135,7 +138,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ needs.bind-go-android.outputs.release_upload_url }}
           asset_path: /tmp/build/Iden3mobile.framework
           asset_name: Iden3mobile.framework
           asset_content_type: application/zip
