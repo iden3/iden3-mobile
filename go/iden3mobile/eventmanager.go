@@ -25,6 +25,7 @@ type EventManager struct {
 	m             sync.RWMutex
 }
 
+// NewEventManager creates an event mannager
 func NewEventManager(storage db.Storage, eventQueue chan Event, s Sender) *EventManager {
 	sl := db.NewStorageList([]byte(eventsStorKey))
 
