@@ -140,6 +140,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.bind-go-android.outputs.release_upload_url }}
-          asset_path: /tmp/build/Iden3mobile.framework
-          asset_name: Iden3mobile.framework
+          asset_path: /tmp/build/Iden3mobile.framework.zip
+          asset_name: Iden3mobile.framework.zip
           asset_content_type: application/zip
