@@ -109,6 +109,7 @@ class GomobileIntegrationTest {
 
         // 3. Prove claims
         var provedClaims = 0
+        var provedClaimsZK = 0
         for (id in ids){
             id?.claimDB?.iterateClaimsJSON(object: ClaimDBIterFner{
                 override fun fn(key: String, claim: String): Boolean{
@@ -127,20 +128,28 @@ class GomobileIntegrationTest {
                             Log.i("fullFlow", "Verify claim ZK: $key. Success? $success. Error? $e")
                             assertEquals(null, e)
                             assertEquals(true, success)
-                            provedClaims++
+                            provedClaimsZK++
                         }
                     })
                     return true
                 }
             })
         }
-        // Wait untilall claims have been proved with and without ZK
-        while (provedClaims < nIdentities*nClaimsPerId*2){
-            Log.i("fullFlow", "Waiting to prove claims: $provedClaims / ${nIdentities*nClaimsPerId*2}")
+        // Wait untilall claims have been proved without ZK
+        while (provedClaims < nIdentities*nClaimsPerId){
+            Log.i("fullFlow", "Waiting to prove claims without ZK: $provedClaims / ${nIdentities*nClaimsPerId}")
             Thread.sleep(2_000)
         }
-        assertEquals(nClaimsPerId*nIdentities*2, provedClaims)
-        Log.i("fullFlow", "Claims proved")
+        assertEquals(nClaimsPerId*nIdentities, provedClaims)
+        Log.i("fullFlow", "Claims proved without ZK")
+
+        // Wait untilall claims have been proved with ZK
+        while (provedClaimsZK < nIdentities*nClaimsPerId){
+            Log.i("fullFlow", "Waiting to prove claims with ZK: $provedClaimsZK / ${nIdentities*nClaimsPerId}")
+            Thread.sleep(2_000)
+        }
+        assertEquals(nClaimsPerId*nIdentities, provedClaimsZK)
+        Log.i("fullFlow", "Claims proved with ZK")
 
         // Restart identities
         ids = restartIdentities(ids, storePath, sharedStorePath, web3Url, fun (event: Event) {

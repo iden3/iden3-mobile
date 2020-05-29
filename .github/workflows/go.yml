@@ -100,4 +100,4 @@ jobs:
           gcloud firebase test android run --type instrumentation --use-orchestrator \
           --app android/gointegration/build/outputs/apk/debug/gointegration-debug.apk \
           --test android/gointegration/build/outputs/apk/androidTest/debug/gointegration-debug-androidTest.apk \
-          --device model=Pixel2,version=28,locale=es,orientation=portrait
+          --device model=dipper,version=28,locale=es,orientation=portrait

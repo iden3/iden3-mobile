@@ -30,8 +30,8 @@ import java.util.*
 class Iden3mobileInstrumentedTest {
 
     private val web3Url = BuildConfig.INFURA_URL
-    private val issuerUrl = "http://192.168.200.181:6100/api/unstable/"
-    private val verifierUrl = "http://192.168.200.181:6200/api/unstable/"
+    private val issuerUrl = "http://188.166.70.93:6100/api/unstable/"
+    private val verifierUrl = "http://188.166.70.93:6200/api/unstable/"
     private lateinit var instrumentationCtx: Context
     private lateinit var storePath: String
     private lateinit var sharedStorePath: String
