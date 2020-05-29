@@ -1,7 +1,10 @@
 package com.iden3.gointegration
 
-import androidx.appcompat.app.AppCompatActivity
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 

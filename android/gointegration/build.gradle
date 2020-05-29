@@ -38,6 +38,12 @@ android {
     }
 
     repositories {
+        flatDir{
+            dirs 'src/libs'
+        }
+    }
+
+    repositories {
         maven {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/iden3/iden3-mobile")
@@ -65,5 +71,6 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit-ktx:1.1.1'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-    androidTestImplementation "com.iden3:iden3mobile:$iden3mobile_version"
+ //   androidTestImplementation "com.iden3:iden3mobile:$iden3mobile_version"
+    api(name:'iden3mobile', ext:'aar')
 }

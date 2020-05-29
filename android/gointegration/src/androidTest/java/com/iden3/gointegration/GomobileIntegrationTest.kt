@@ -9,8 +9,8 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
-import java.lang.Exception
 import java.time.Instant
+import java.util.*
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -23,13 +23,16 @@ class GomobileIntegrationTest {
     fun fullFlow() {
         // Test config
         val nIdentities = 2
-        val nClaimsPerId = 5
+        val nClaimsPerId = 2
         val web3Url = BuildConfig.INFURA_URL
-        val issuerUrl = "http://167.172.104.160:6100/api/unstable"
-        val verifierUrl = "http://167.172.104.160:6200/api/unstable"
-
-        // Create a new directory for each identity
+        val issuerUrl = "http://188.166.70.93:6100/api/unstable/"
+        val verifierUrl = "http://188.166.70.93:6200/api/unstable/"
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        // Clean and create the shared directory
+        val sharedStorePath = appContext.filesDir.absolutePath + "/shared"
+        File(sharedStorePath).deleteRecursively()
+        File(sharedStorePath).mkdirs()
+        // Create a new directory for each identity
         val storePath = appContext.filesDir.absolutePath
         for (i in 0 until nIdentities){
             // Remove directory in case last test did't finish
@@ -45,6 +48,7 @@ class GomobileIntegrationTest {
             try {
                 Iden3mobile.newIdentity(
                     "$storePath/$i",
+                    sharedStorePath,
                     "password",
                     web3Url,
                     1000,
@@ -69,11 +73,13 @@ class GomobileIntegrationTest {
         for (i in 0 until nClaimsPerId){
             var idCount = 0
             for (id in ids){
-                id?.requestClaimWithCb(issuerUrl, "$idCount/$i/${Instant.now()}") { ticket, e ->
+                Log.i("fullFlow","REQUESTING CLAIM")
+                val data = random()
+                id?.requestClaimWithCb(issuerUrl, data) { ticket, e ->
+                    Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED: ${ticket?.id}. $ticketCounter TICKETS RECEIVED SO FAR}")
                     assertNotEquals(null, ticket)
                     assertEquals(null, e)
                     ticketCounter++
-                    Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED: ${ticket?.id}. $ticketCounter TICKETS RECEIVED SO FAR}")
                 }
                 idCount++
             }
@@ -85,7 +91,7 @@ class GomobileIntegrationTest {
         }
 
         // Restart identities
-        ids = restartIdentities(ids, storePath, web3Url, fun (event: Event) {
+        ids = restartIdentities(ids, storePath, sharedStorePath, web3Url, fun (event: Event) {
             eventCounter++
             Log.i("fullFlow","EVENT RECEIVED: ${event.ticketId}. $eventCounter EVENTS RECEIVED SO FAR")
             assertEquals(null, event.err)
@@ -99,38 +105,45 @@ class GomobileIntegrationTest {
         }
         // Check claims on DB
         assertEquals(nIdentities*nClaimsPerId, countClaims(ids))
+        Log.i("fullFlow", "Claims received. Proving them")
 
         // 3. Prove claims
-        // Since the claims have been issued instants ago, they may not be on chain yet
-        // so it's normal to receive error in the upcoming seconds
         var provedClaims = 0
-        var attempts = 10
-        while (provedClaims < nIdentities*nClaimsPerId && attempts >= 0){
-            provedClaims = 0
-            for (id in ids){
-                id?.getClaimDB()?.iterateClaimsJSON(object: ClaimDBIterFner{
-                    override fun fn(key: String, claim: String): Boolean{
-                        id.proveClaimWithCb(verifierUrl, key, object: CallbackProveClaim {
-                            override fun fn(success: Boolean, e: Exception?) {
-                                Log.i("fullFlow", "Verify claim: $key. Success? $success. Error? $e")
-                                if(e == null){
-                                    assertEquals(true, success)
-                                    provedClaims++
-                                }
-                            }
-                        })
-                        return true
-                    }
-                })
-            }
-            attempts--
-            Log.i("fullFlow","WAITING FOR CLAIMS TO BE PROVED.")
+        for (id in ids){
+            id?.claimDB?.iterateClaimsJSON(object: ClaimDBIterFner{
+                override fun fn(key: String, claim: String): Boolean{
+                    // Prove claim
+                    id.proveClaimWithCb(verifierUrl, key, object: CallbackProveClaim {
+                        override fun fn(success: Boolean, e: Exception?) {
+                            Log.i("fullFlow", "Verify claim: $key. Success? $success. Error? $e")
+                            assertEquals(null, e)
+                            assertEquals(true, success)
+                            provedClaims++
+                        }
+                    })
+                    // Prove claim with ZK (Zero Knowledge)
+                    id.proveClaimZKWithCb(verifierUrl, key, object: CallbackProveClaim {
+                        override fun fn(success: Boolean, e: Exception?) {
+                            Log.i("fullFlow", "Verify claim ZK: $key. Success? $success. Error? $e")
+                            assertEquals(null, e)
+                            assertEquals(true, success)
+                            provedClaims++
+                        }
+                    })
+                    return true
+                }
+            })
+        }
+        // Wait untilall claims have been proved with and without ZK
+        while (provedClaims < nIdentities*nClaimsPerId*2){
+            Log.i("fullFlow", "Waiting to prove claims: $provedClaims / ${nIdentities*nClaimsPerId*2}")
             Thread.sleep(2_000)
         }
-        assertEquals(nClaimsPerId*nIdentities, provedClaims)
+        assertEquals(nClaimsPerId*nIdentities*2, provedClaims)
+        Log.i("fullFlow", "Claims proved")
 
         // Restart identities
-        ids = restartIdentities(ids, storePath, web3Url, fun (event: Event) {
+        ids = restartIdentities(ids, storePath, sharedStorePath, web3Url, fun (event: Event) {
             eventCounter++
             Log.i("fullFlow","UNEXPECTED EVENT RECEIVED: ${event.ticketId}.")
             assertEquals(null, event)
@@ -145,13 +158,14 @@ class GomobileIntegrationTest {
         Log.i("fullFlow","REQUESTING CLAIMS AND CANCELING THEM.")
         ticketCounter = 0
         for (id in ids){
-            id?.requestClaimWithCb(issuerUrl, "${Instant.now()}", object: CallbackRequestClaim{
+            val data = random()
+            id?.requestClaimWithCb(issuerUrl, data, object: CallbackRequestClaim{
                 override fun fn(ticket: Ticket?, e: Exception?) {
                     assertNotEquals(null, ticket)
                     assertEquals(null, e)
                     Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED.")
                     // Cancel ticket
-                    id?.tickets.cancelTicket(ticket?.id)
+                    id.tickets.cancelTicket(ticket?.id)
                     ticketCounter++
                 }
             })
@@ -195,7 +209,7 @@ class GomobileIntegrationTest {
         Log.i("fullFlow","TEST COMPLETED :)")
     }
 
-    fun restartIdentities(ids: List<Identity?>, storePath: String, web3Url: String, fn: (e:Event)->Unit): List<Identity?>{
+    fun restartIdentities(ids: List<Identity?>, storePath: String, sharedStorePath: String, web3Url: String, fn: (e:Event)->Unit): List<Identity?>{
         Log.i("fullFlow","RESTARTING IDENTITIES")
         for (id in ids){
             id?.stop()
@@ -204,6 +218,7 @@ class GomobileIntegrationTest {
             try {
                 Iden3mobile.newIdentityLoad(
                         "$storePath/$i",
+                        sharedStorePath,
                         "password",
                         web3Url,
                         1000,
@@ -231,5 +246,16 @@ class GomobileIntegrationTest {
             })
         }
         return claimCounter
+    }
+
+    fun random(): String? {
+        val generator = Random()
+        val randomStringBuilder = StringBuilder()
+        var tempChar: Char
+        for (i in 0 until 16) {
+            tempChar = ((generator.nextInt(10) + 48).toChar())
+            randomStringBuilder.append(tempChar)
+        }
+        return randomStringBuilder.toString()
     }
 }

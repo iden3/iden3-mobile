@@ -14,11 +14,13 @@ import (
 	idenpuboffchainwriterhttp "github.com/iden3/go-iden3-core/components/idenpuboffchain/writerhttp"
 	"github.com/iden3/go-iden3-core/components/idenpubonchain"
 	"github.com/iden3/go-iden3-core/components/verifier"
+	"github.com/iden3/go-iden3-core/core"
 	"github.com/iden3/go-iden3-core/core/claims"
 	"github.com/iden3/go-iden3-core/db"
 	"github.com/iden3/go-iden3-core/identity/issuer"
 	"github.com/iden3/go-iden3-core/keystore"
 	"github.com/iden3/go-iden3-core/merkletree"
+	zkutils "github.com/iden3/go-iden3-core/utils/zk"
 	"github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	issuerMsg "github.com/iden3/go-iden3-servers-demo/servers/issuerdemo/messages"
 	verifierMsg "github.com/iden3/go-iden3-servers-demo/servers/verifier/messages"
@@ -70,13 +72,14 @@ func (r *Requests) Approve(id int, claim merkletree.Entrier) error {
 	return nil
 }
 
-func (r *Requests) Add(value string) int {
+func (r *Requests) Add(value, index string) int {
 	r.rw.Lock()
 	defer r.rw.Unlock()
 	r.n += 1
 	request := messages.Request{
 		Id:     r.n,
 		Value:  value,
+		Index:  index,
 		Status: messages.RequestStatusPending,
 	}
 	r.pending[request.Id] = request
@@ -95,6 +98,16 @@ func (r *Requests) Get(id int) (*messages.Request, error) {
 	return nil, fmt.Errorf("Request id: %v not found", id)
 }
 
+func newClaimDemo(id *core.ID, index, value []byte) claims.Claimer {
+	indexBytes, valueBytes := [claims.IndexSubjectSlotLen]byte{}, [claims.ValueSlotLen]byte{}
+	if len(index) > 248/8*2 || len(value) > 248/8*3 {
+		panic("index or value too long")
+	}
+	copy(indexBytes[152/8:], index[:])
+	copy(valueBytes[216/8:], value[:])
+	return claims.NewClaimOtherIden(id, indexBytes, valueBytes)
+}
+
 type Conf struct {
 	IP                string
 	Port              string
@@ -103,7 +116,9 @@ type Conf struct {
 }
 
 func NewIssuer(t *testing.T, idenPubOnChain idenpubonchain.IdenPubOnChainer,
-	idenPubOffChainWrite idenpuboffchain.IdenPubOffChainWriter) *issuer.Issuer {
+	idenPubOffChainWrite idenpuboffchain.IdenPubOffChainWriter,
+	zkFilesIdenState *zkutils.ZkFiles,
+) *issuer.Issuer {
 	cfg := issuer.ConfigDefault
 	storage := db.NewMemoryStorage()
 	ksStorage := keystore.MemStorage([]byte{})
@@ -115,18 +130,32 @@ func NewIssuer(t *testing.T, idenPubOnChain idenpubonchain.IdenPubOnChainer,
 	require.Nil(t, err)
 	_, err = issuer.Create(cfg, kOp, []claims.Claimer{}, storage, keyStore)
 	require.Nil(t, err)
-	is, err := issuer.Load(storage, keyStore, idenPubOnChain, idenPubOffChainWrite)
+	require.Nil(t, err)
+	idenStateZkProofConf := &issuer.IdenStateZkProofConf{
+		Levels: 16,
+		Files:  *zkFilesIdenState,
+	}
+	is, err := issuer.Load(
+		storage,
+		keyStore,
+		idenPubOnChain,
+		idenStateZkProofConf,
+		idenPubOffChainWrite,
+	)
 	require.Nil(t, err)
 	return is
 }
 
-func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChainer) *http.Server {
+func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChainer,
+	zkFilesIdenState *zkutils.ZkFiles,
+	zkFilesCredential *zkutils.ZkFiles,
+) *http.Server {
 	idenPubOffChainWrite, err := idenpuboffchainwriterhttp.NewIdenPubOffChainWriteHttp(
 		idenpuboffchainwriterhttp.NewConfigDefault(fmt.Sprintf("http://%v:%v/idenpublicdata/", cfg.IP, cfg.Port)),
 		db.NewMemoryStorage(),
 	)
 	require.Nil(t, err)
-	is := NewIssuer(t, idenPubOnChain, idenPubOffChainWrite)
+	is := NewIssuer(t, idenPubOnChain, idenPubOffChainWrite, zkFilesIdenState)
 	requests := NewRequests()
 	verif := verifier.New(idenPubOnChain)
 
@@ -135,7 +164,9 @@ func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChain
 		for {
 			err := is.PublishState()
 			if err != nil {
-				log.WithError(err).Warn("Issuer.PublishState()")
+				if err != issuer.ErrIdenStatePendingNotNil {
+					log.WithError(err).Error("Issuer.PublishState()")
+				}
 			}
 			err = is.SyncIdenStatePublic()
 			if err != nil {
@@ -159,13 +190,14 @@ func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChain
 		if err := ShouldBindJSONValidate(c, &req); err != nil {
 			return
 		}
-		id := requests.Add(req.Value)
+		id := requests.Add(req.Index, req.Value)
 		// Approve request and issue claim after c.TimeToAproveClaim duration
 		go func() {
 			time.Sleep(cfg.TimeToAproveClaim)
-			indexSlot, valueSlot := [claims.IndexSlotLen]byte{}, [claims.ValueSlotLen]byte{}
-			copy(indexSlot[:], []byte(req.Value))
-			claim := claims.NewClaimBasic(indexSlot, valueSlot)
+
+			claim := newClaimDemo(req.HolderID,
+				append([]byte("Mia kusenveturilo estas plena je angiloj."), []byte(req.Index)...),
+				[]byte(req.Value))
 
 			// Issue Claim
 			if err := is.IssueClaim(claim); err != nil {
@@ -268,6 +300,31 @@ func Serve(t *testing.T, cfg *Conf, idenPubOnChain idenpubonchain.IdenPubOnChain
 		err := verif.VerifyCredentialValidity(req.CredentialValidity, 30*time.Minute)
 		if err != nil {
 			handlers.Fail(c, "VerifyCredentialValidity()", err)
+			return
+		}
+
+		c.JSON(200, gin.H{})
+	})
+
+	api.Static("/credentialDemo/artifacts", zkFilesCredential.Path)
+
+	api.POST("/credentialDemo/verifyzkp", func(c *gin.Context) {
+
+		var req verifierMsg.ReqVerifyZkp
+		if err := c.ShouldBindJSON(&req); err != nil {
+			handlers.Fail(c, "cannot parse json body", err)
+			return
+		}
+		err := verif.VerifyZkProofCredential(
+			req.ZkProof,
+			req.PubSignals,
+			req.IssuerID,
+			req.IdenStateBlockN,
+			zkFilesCredential,
+			30*time.Minute,
+		)
+		if err != nil {
+			handlers.Fail(c, "VerifyZkProofCredential()", err)
 			return
 		}
 

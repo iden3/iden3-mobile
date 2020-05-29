@@ -62,14 +62,14 @@ func TestHolderHandlers(t *testing.T) {
 	go func() {
 		for {
 			log.Info("idenPubOnChain.Sync()")
-			timeBlock.AddTime(10)
-			timeBlock.AddBlock(1)
+			timeBlock.AddTime(100)
+			timeBlock.AddBlock(10)
 			idenPubOnChain.Sync()
 			time.Sleep(2 * time.Second)
 		}
 	}()
 
-	// Start mockup server
+	// // Start mockup server
 	server := mockupserver.Serve(t, &mockupserver.Conf{
 		IP:                "127.0.0.1",
 		Port:              "1234",
@@ -77,11 +77,16 @@ func TestHolderHandlers(t *testing.T) {
 		TimeToPublish:     2 * time.Second,
 	},
 		idenPubOnChain,
+		zkFilesIdenState,
+		zkFilesCredential,
 	)
 	time.Sleep(1 * time.Second)
 
 	expectedEvents = make(map[string]testEvent)
 	// Create two new identities without extra claims
+	sharedDir, err := ioutil.TempDir("", "shared")
+	require.Nil(t, err)
+	rmDirs = append(rmDirs, sharedDir)
 	dir1, err := ioutil.TempDir("", "holderTest1")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir1)
@@ -89,51 +94,51 @@ func TestHolderHandlers(t *testing.T) {
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir2)
 
-	id1, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id1, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", idenPubOnChain,
+		c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
-	id2, err := NewIdentityTest(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, NewBytesArray(), nil)
+	id2, err := NewIdentityTest(dir2, sharedDir, "pass_TestHolder_2", idenPubOnChain,
+		c.HolderTicketPeriod, NewBytesArray(), nil)
 	require.Nil(t, err)
 	// Request claim
-	t1, err := id1.RequestClaim(c.IssuerUrl, id1.id.ID().String())
+	t1, err := id1.RequestClaim(c.IssuerUrl, randomBase64String(16))
 	require.Nil(t, err)
 	expectedEvents[t1.Id] = testEvent{Typ: t1.Type}
 
-	t2, err := id2.RequestClaim(c.IssuerUrl, id2.id.ID().String())
+	t2, err := id2.RequestClaim(c.IssuerUrl, randomBase64String(16))
 	require.Nil(t, err)
 	expectedEvents[t2.Id] = testEvent{Typ: t2.Type}
 	// Test that tickets are persisted by reloading identities
 	id1.Stop()
 	id2.Stop()
-	id1, err = NewIdentityTestLoad(dir1, "pass_TestHolder1", c.Web3Url, c.HolderTicketPeriod, nil)
+	id1, err = NewIdentityTestLoad(dir1, sharedDir, "pass_TestHolder_1", idenPubOnChain,
+		c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
-	id2, err = NewIdentityTestLoad(dir2, "pass_TestHolder2", c.Web3Url, c.HolderTicketPeriod, nil)
+	id2, err = NewIdentityTestLoad(dir2, sharedDir, "pass_TestHolder_2", idenPubOnChain,
+		c.HolderTicketPeriod, nil)
 	require.Nil(t, err)
 	// Wait for the events that will get triggered on issuer response
-	nAtempts := 10
+	nAtempts := 1000 // TODO: go back to 10 atempts
 	period := time.Duration(c.HolderTicketPeriod) * time.Millisecond
 	eventFromId = 1
 	holderEventHandler(testGetEventWithTimeOut(id1.eventMan, 0, nAtempts, period))
 	eventFromId = 2
 	holderEventHandler(testGetEventWithTimeOut(id2.eventMan, 0, nAtempts, period))
-	// Prove claim
-	i := 0
-	for ; i < c.VerifierAttempts; i++ {
-		success1, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
-		if err != nil {
-			log.Error("Error proving claim: ", err)
-		}
-		success2, err := id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
-		if err != nil {
-			log.Error("Error proving claim: ", err)
-		}
-		if success1 && success2 {
-			break
-		}
-		time.Sleep(time.Duration(c.VerifierRetryPeriod) * time.Second)
-	}
-	if i == c.VerifierAttempts {
-		panic(fmt.Errorf("Reached maximum number of loops for id{1,2}.ProveClaim"))
-	}
+	// Prove Claims
+	isSuccess, err := id1.ProveClaim(c.VerifierUrl, id1ClaimID[:])
+	require.True(t, isSuccess)
+	require.NoError(t, err)
+	isSuccess, err = id2.ProveClaim(c.VerifierUrl, id2ClaimID[:])
+	require.True(t, isSuccess)
+	require.NoError(t, err)
+	// Prove Claims with ZK
+	isSuccess, err = id1.ProveClaimZK(c.VerifierUrl, id1ClaimID[:])
+	require.NoError(t, err)
+	require.True(t, isSuccess)
+	isSuccess, err = id2.ProveClaimZK(c.VerifierUrl, id2ClaimID[:])
+	require.NoError(t, err)
+	require.True(t, isSuccess)
+	// Stop identities
 	id1.Stop()
 	id2.Stop()
 
@@ -210,10 +215,14 @@ func TestStressIdentity(t *testing.T) {
 			TimeToPublish:     500 * time.Millisecond,
 		},
 			idenPubOnChain,
+			zkFilesIdenState,
+			zkFilesCredential,
 		)
 		time.Sleep(200 * time.Millisecond)
 	}
-
+	sharedDir, err := ioutil.TempDir("", "shared")
+	require.Nil(t, err)
+	rmDirs = append(rmDirs, sharedDir)
 	dir1, err := ioutil.TempDir("", "holderStressTest")
 	require.Nil(t, err)
 	rmDirs = append(rmDirs, dir1)
@@ -226,7 +235,7 @@ func TestStressIdentity(t *testing.T) {
 	}
 	claimsLen := n * m
 	testStressIdentityWg.Add(claimsLen)
-	iden, err := NewIdentityTest(dir1, "pass_TestHolder1", c.Web3Url, 400, NewBytesArray(), ha)
+	iden, err := NewIdentityTest(dir1, sharedDir, "pass_TestHolder_1", idenPubOnChain, 400, NewBytesArray(), ha)
 	require.Nil(t, err)
 
 	// Request claims
@@ -235,7 +244,7 @@ func TestStressIdentity(t *testing.T) {
 		for _j := 0; _j < m; _j++ {
 			j := _j
 			go func() {
-				t1, err := iden.RequestClaim(fmt.Sprintf("http://127.0.0.1:9%03d/", i), randomBase64String(80))
+				t1, err := iden.RequestClaim(fmt.Sprintf("http://127.0.0.1:9%03d/", i), randomBase64String(16))
 				require.Nil(t, err)
 				log.WithField("TicketId", t1.Id).WithField("i", i).WithField("j", j).Info("--- Request claim ---")
 				mutex.Lock()
@@ -265,21 +274,10 @@ func TestStressIdentity(t *testing.T) {
 		wg.Add(1)
 		id := _id
 		go func() {
-			i := 0
-			for ; i < c.VerifierAttempts; i++ {
-				success1, err := iden.ProveClaim("http://127.0.0.1:9000", id)
-				if err != nil {
-					log.Error("Error proving claim: ", err)
-				}
-				if success1 {
-					wg.Done()
-					break
-				}
-				time.Sleep(time.Duration(400 * time.Millisecond))
-			}
-			if i == c.VerifierAttempts {
-				panic(fmt.Errorf("Reached maximum number of loops for iden.ProveClaim"))
-			}
+			success1, err := iden.ProveClaim("http://127.0.0.1:9000", id)
+			require.Nil(t, err)
+			require.True(t, success1)
+			wg.Done()
 		}()
 		if k >= 16 {
 			time.Sleep(200 * time.Millisecond)
