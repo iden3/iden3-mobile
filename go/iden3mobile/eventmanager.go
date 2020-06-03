@@ -13,9 +13,11 @@ type eventToStore struct {
 	Err string
 }
 
+// Sender is an interface that sends events
 type Sender interface {
 	Send(*Event)
 }
+
 type EventManager struct {
 	storage       db.Storage
 	eventsStorage *db.StorageList
