@@ -45,7 +45,6 @@ class Iden3mobileInstrumentedTest {
         instrumentationCtx = InstrumentationRegistry.getInstrumentation().targetContext
         storePath = instrumentationCtx.filesDir.absolutePath
         sharedStorePath = instrumentationCtx.filesDir.absolutePath + "/shared"
-        // getSystemService(instrumentationCtx.DOWNLOAD_SERVICE)
     }
 
     @Test
@@ -91,6 +90,25 @@ class Iden3mobileInstrumentedTest {
         Iden3mobile.newIdentity(
             null,
             sharedStorePath,
+            "password",
+            web3Url,
+            1000,
+            null
+        ) { event -> print(event) }
+    }
+
+    @Test
+    fun testCreateIdentityErrorNullSharedStorePath() {
+        expectedException.expect(Exception::class.java)
+        expectedException.expectMessage(StringContains("mkdir ZKArtifacts: read-only file system"))
+        val file = File("$storePath/alias")
+        if (file.exists()) {
+            file.deleteRecursively()
+        }
+        file.mkdirs()
+        Iden3mobile.newIdentity(
+            "$storePath/alias",
+            null,
             "password",
             web3Url,
             1000,
@@ -172,6 +190,42 @@ class Iden3mobileInstrumentedTest {
             -1000,
             null
         ) { event -> print(event) }
+    }
+
+    @Test
+    fun testRecreateIdentitySuccess() {
+        val file = File("$storePath/alias")
+        if (file.exists()) {
+            file.deleteRecursively()
+        }
+        file.mkdirs()
+        val identity = Iden3mobile.newIdentity(
+            "$storePath/alias",
+            sharedStorePath,
+            "password1",
+            web3Url,
+            1000,
+            null
+        ) { event -> print(event) }
+
+        val ticket = identity.requestClaim(issuerUrl, "12345")
+        Log.i("testRecreateIdentitySuccess","Ticket: $ticket")
+
+        if (file.exists()) {
+            file.deleteRecursively()
+        }
+        file.mkdirs()
+        val identity2= Iden3mobile.newIdentity(
+            "$storePath/alias",
+            sharedStorePath,
+            "password2",
+            web3Url,
+            1000,
+            null
+            ) { event -> print(event) }
+
+        val ticket2 = identity2.requestClaim(issuerUrl, "1234")
+        Log.i("testRecreateIdentitySuccess","Ticket: $ticket2")
     }
 
     @Test
@@ -292,7 +346,29 @@ class Iden3mobileInstrumentedTest {
         val data = random()
         val ticket = identity.requestClaim(issuerUrl, data)
         Log.i("testRequestClaimSuccess","Ticket: $ticket")
-        Assert.assertNotEquals(null, ticket)
+        assertNotEquals(null, ticket)
+        identity.stop()
+    }
+
+    @Test
+    fun testRequestClaimErrorDataExceeds16Chars() {
+        expectedException.expect(Exception::class.java)
+        expectedException.expectMessage(StringContains("The data string cannot be longer than 16 chars"))
+        val file = File("$storePath/alias")
+        if (file.exists()) {
+            file.deleteRecursively()
+        }
+        file.mkdirs()
+        val identity = Iden3mobile.newIdentity(
+            "$storePath/alias",
+            sharedStorePath,
+            "password",
+            web3Url,
+            1000,
+            null
+        ) { event -> print(event) }
+        val data = "12345678901234567"
+        identity.requestClaim(issuerUrl, data)
         identity.stop()
     }
 

@@ -10,3 +10,6 @@ vendor/
 .project
 .settings/
 .vscode/
+ios/iden3CoreSDK.xcodeproj/project.xcworkspace
+ios/iden3CoreSDK.xcodeproj/xcshareddata
+ios/iden3CoreSDK.xcodeproj/xcuserdata
