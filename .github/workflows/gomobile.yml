@@ -132,7 +132,7 @@ jobs:
           mkdir -p /tmp/build
           gomobile init
           gomobile bind --target ios -o /tmp/build/Iden3mobile.framework
-          cd /tmp/build && zip -r Iden3mobile.framework.zip Iden3mobile.framework
+          cd /tmp/build && zip -r --symlinks Iden3mobile.framework.zip Iden3mobile.framework
 
       - name: Release framework
         uses: actions/upload-release-asset@v1
