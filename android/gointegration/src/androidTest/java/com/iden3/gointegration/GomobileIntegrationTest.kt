@@ -120,14 +120,13 @@ class GomobileIntegrationTest {
                         }
                     })
                     // Prove claim with ZK (Zero Knowledge)
-                    id.proveClaimZKWithCb(verifierUrl, claim, object: CallbackProveClaim {
-                        override fun fn(success: Boolean, e: Exception?) {
+                    id.proveClaimZKWithCb(verifierUrl, claim,
+                        CallbackProveClaim { success, e ->
                             Log.i("fullFlow", "Verify claim ZK: $claim. Success? $success. Error? $e")
                             assertEquals(null, e)
                             assertEquals(true, success)
                             provedClaimsZK++
-                        }
-                    })
+                        })
                     return true
                 }
             })
@@ -165,16 +164,14 @@ class GomobileIntegrationTest {
         ticketCounter = 0
         for (id in ids){
             val data = random()
-            id?.requestClaimWithCb(issuerUrl, data, object: CallbackRequestClaim{
-                override fun fn(ticket: Ticket?, e: Exception?) {
-                    assertNotEquals(null, ticket)
-                    assertEquals(null, e)
-                    Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED.")
-                    // Cancel ticket
-                    id.tickets.cancelTicket(ticket?.id)
-                    ticketCounter++
-                }
-            })
+            id?.requestClaimWithCb(issuerUrl, data) { ticket, e ->
+                assertNotEquals(null, ticket)
+                assertEquals(null, e)
+                Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED.")
+                // Cancel ticket
+                id.tickets.cancelTicket(ticket?.id)
+                ticketCounter++
+            }
         }
         while (ticketCounter < nIdentities){
             Log.i("fullFlow","WAITING FOR TICKETS TO BE GENERATED.")
@@ -187,15 +184,13 @@ class GomobileIntegrationTest {
         ticketCounter = 0
         var cancelledTicketCounter = 0
         for (id in ids){
-            id?.tickets?.iterate(object: TicketOperator{
-                override fun iterate(ticket: Ticket?): Boolean {
-                    ticketCounter++
-                    if(ticket?.status == Iden3mobile.TicketStatusCancel){
-                        cancelledTicketCounter++
-                    }
-                    return true
+            id?.tickets?.iterate { ticket ->
+                ticketCounter++
+                if(ticket?.status == Iden3mobile.TicketStatusCancel){
+                    cancelledTicketCounter++
                 }
-            })
+                true
+            }
         }
         assertEquals(nIdentities*nClaimsPerId + nIdentities, ticketCounter)
         assertEquals(nIdentities, cancelledTicketCounter)
