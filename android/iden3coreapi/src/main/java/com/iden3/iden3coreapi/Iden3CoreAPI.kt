@@ -121,12 +121,20 @@ open class Iden3CoreAPI {
     }
 
     @Throws(Exception::class)
-    fun proveClaim(identity: Identity, verifierUrl: String, credentialId: String, callback: CallbackProveClaim?) : Boolean?  {
+    fun proveClaim(identity: Identity, verifierUrl: String, credentialId: String, withZKProof: Boolean, callback: CallbackProveClaim?) : Boolean?  {
         if (isInitialized()) {
-            if (callback == null) {
-                return identity.proveClaim(verifierUrl, credentialId)
+            if (withZKProof) {
+                if (callback == null) {
+                    return identity.proveClaim(verifierUrl, credentialId)
+                } else {
+                    identity.proveClaimWithCb(verifierUrl, credentialId, callback)
+                }
             } else {
-                identity.proveClaimWithCb(verifierUrl, credentialId, callback)
+                if (callback == null) {
+                    return identity.proveClaimZK(verifierUrl, credentialId)
+                } else {
+                    identity.proveClaimZKWithCb(verifierUrl, credentialId, callback)
+                }
             }
         } else {
             throw IllegalStateException("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
