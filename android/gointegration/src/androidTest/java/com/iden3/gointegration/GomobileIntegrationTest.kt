@@ -52,15 +52,12 @@ class GomobileIntegrationTest {
                     "password",
                     web3Url,
                     1000,
-                    null,
-                    object : Sender {
-                        override fun send(event: Event) {
-                            eventCounter++
-                            Log.i("fullFlow","EVENT RECEIVED: ${event.ticketId}. $eventCounter EVENTS RECEIVED SO FAR")
-                            assertEquals(null, event.err)
-                        }
-                    }
-                )
+                    null
+                ) { event ->
+                    eventCounter++
+                    Log.i("fullFlow","EVENT RECEIVED: ${event.ticketId}. $eventCounter EVENTS RECEIVED SO FAR")
+                    assertEquals(null, event.err)
+                }
             } catch (e: Exception) {
                 assertEquals(null, e)
                 null
@@ -112,20 +109,20 @@ class GomobileIntegrationTest {
         var provedClaimsZK = 0
         for (id in ids){
             id?.claimDB?.iterateClaimsJSON(object: ClaimDBIterFner{
-                override fun fn(key: String, claim: String): Boolean{
+                override fun fn(claim: String, keys: String): Boolean{
                     // Prove claim
-                    id.proveClaimWithCb(verifierUrl, key, object: CallbackProveClaim {
+                    id.proveClaimWithCb(verifierUrl, claim, object: CallbackProveClaim {
                         override fun fn(success: Boolean, e: Exception?) {
-                            Log.i("fullFlow", "Verify claim: $key. Success? $success. Error? $e")
+                            Log.i("fullFlow", "Verify claim: $claim. Success? $success. Error? $e")
                             assertEquals(null, e)
                             assertEquals(true, success)
                             provedClaims++
                         }
                     })
                     // Prove claim with ZK (Zero Knowledge)
-                    id.proveClaimZKWithCb(verifierUrl, key, object: CallbackProveClaim {
+                    id.proveClaimZKWithCb(verifierUrl, claim, object: CallbackProveClaim {
                         override fun fn(success: Boolean, e: Exception?) {
-                            Log.i("fullFlow", "Verify claim ZK: $key. Success? $success. Error? $e")
+                            Log.i("fullFlow", "Verify claim ZK: $claim. Success? $success. Error? $e")
                             assertEquals(null, e)
                             assertEquals(true, success)
                             provedClaimsZK++
@@ -135,7 +132,7 @@ class GomobileIntegrationTest {
                 }
             })
         }
-        // Wait untilall claims have been proved without ZK
+        // Wait until all claims have been proved without ZK
         while (provedClaims < nIdentities*nClaimsPerId){
             Log.i("fullFlow", "Waiting to prove claims without ZK: $provedClaims / ${nIdentities*nClaimsPerId}")
             Thread.sleep(2_000)
@@ -230,13 +227,8 @@ class GomobileIntegrationTest {
                         sharedStorePath,
                         "password",
                         web3Url,
-                        1000,
-                        object : Sender {
-                            override fun send(event: Event) {
-                                fn(event)
-                            }
-                        }
-                )
+                        1000
+                ) { event -> fn(event) }
             } catch (e: Exception) {
                 assertEquals(null, e)
                 null

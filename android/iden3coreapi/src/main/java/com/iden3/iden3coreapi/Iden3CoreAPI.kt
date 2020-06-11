@@ -18,22 +18,18 @@ open class Iden3CoreAPI {
     }
 
     private lateinit var web3Url: String
-    private lateinit var issuerUrl: String
-    private lateinit var verifierUrl: String
     private lateinit var storePath: String
     private var checkTicketsPeriod : Long = 10000
 
-    fun initializeAPI(web3Url: String, issuerUrl: String, verifierUrl: String, storePath: String, checkTicketsPeriod: Long) : Boolean {
+    fun initializeAPI(web3Url: String, storePath: String, checkTicketsPeriod: Long) : Boolean {
         this.web3Url = web3Url
-        this.issuerUrl = issuerUrl
-        this.verifierUrl = verifierUrl
         this.storePath = storePath
         this.checkTicketsPeriod = checkTicketsPeriod
         return isInitialized()
     }
 
     fun isInitialized() : Boolean {
-        return web3Url.isNotEmpty() && issuerUrl.isNotEmpty() && verifierUrl.isNotEmpty() && storePath.isNotEmpty() && checkTicketsPeriod > 0
+        return web3Url.isNotEmpty() && storePath.isNotEmpty() && checkTicketsPeriod > 0
     }
 
     @Throws(Exception::class)
@@ -49,6 +45,7 @@ open class Iden3CoreAPI {
                         file.mkdirs()
                         Iden3mobile.newIdentity(
                             "$storePath/$alias",
+                            "$storePath/shared",
                             password,
                             web3Url,
                             checkTicketsPeriod,
@@ -56,6 +53,7 @@ open class Iden3CoreAPI {
                         ) { event -> print(event) }
                     } else {
                         Iden3mobile.newIdentityLoad("$storePath/$alias",
+                            "$storePath/shared",
                             password,
                             web3Url,
                             checkTicketsPeriod
@@ -81,6 +79,7 @@ open class Iden3CoreAPI {
                     val file = File("$storePath/$alias")
                     if (file.exists()) {
                         return Iden3mobile.newIdentityLoad("$storePath/$alias",
+                            "$storePath/shared",
                             password,
                             web3Url,
                             checkTicketsPeriod
@@ -108,7 +107,7 @@ open class Iden3CoreAPI {
     }
 
     @Throws(Exception::class)
-    fun requestClaim(identity: Identity, data: String, callback: CallbackRequestClaim?) : Ticket? {
+    fun requestClaim(identity: Identity, issuerUrl: String, data: String, callback: CallbackRequestClaim?) : Ticket? {
         if (isInitialized()) {
             if (callback == null) {
                 return identity.requestClaim(issuerUrl, data)
@@ -122,7 +121,7 @@ open class Iden3CoreAPI {
     }
 
     @Throws(Exception::class)
-    fun proveClaim(identity: Identity, credentialId: String, callback: CallbackProveClaim?) : Boolean?  {
+    fun proveClaim(identity: Identity, verifierUrl: String, credentialId: String, callback: CallbackProveClaim?) : Boolean?  {
         if (isInitialized()) {
             if (callback == null) {
                 return identity.proveClaim(verifierUrl, credentialId)
