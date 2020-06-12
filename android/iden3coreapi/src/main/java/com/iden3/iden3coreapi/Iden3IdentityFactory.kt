@@ -24,7 +24,7 @@ open class Iden3IdentityFactory {
      *
      * @param web3Url: String the Web3 url.
      * @param storePath: String the absolute path where to store the identities.
-     * @param checkTicketsPeriod: Long time in miliseconds of the period needed for checking the tickets.
+     * @param checkTicketsPeriod: Time in miliseconds of the period needed for checking the tickets.
      *
      * @return Boolean if the initialization has been successful.
      */
@@ -47,7 +47,7 @@ open class Iden3IdentityFactory {
     /**
      * Creates a new Iden3 identity.
      *
-     * @param alias: String the alias of the identity.
+     * @param alias: String the alias of the identity. Should be digits or letters without spaces
      * @param password: String the password to access the identity.
      * @param eventListener: Listener of events associated to the identity.
      *
@@ -56,7 +56,7 @@ open class Iden3IdentityFactory {
     @Throws(Exception::class)
     fun createIdentity(alias: String, password: String, eventListener: Iden3EventListener?) : Iden3Identity? {
         if (isInitialized()) {
-            if (alias.isEmpty() && isAlphaNumeric(alias) || password.isEmpty()) {
+            if (alias.isEmpty() || !isDigitsOrLetters(alias) || password.isEmpty()) {
                 throw IllegalArgumentException("Iden3 method called with not valid arguments")
             } else {
                 try {
@@ -85,7 +85,7 @@ open class Iden3IdentityFactory {
     /**
      * Loads a previously created Iden3 identity.
      *
-     * @param alias: String the alias of the identity.
+     * @param alias: String the alias of the identity. Should be digits or letters without spaces
      * @param password: String the password to access the identity.
      * @param eventListener: Listener of events associated to the identity.
      *
@@ -119,7 +119,7 @@ open class Iden3IdentityFactory {
         }
     }
 
-    private fun isAlphaNumeric(chars: String): Boolean {
+    private fun isDigitsOrLetters(chars: String): Boolean {
         return chars.matches("^[a-zA-Z0-9]*$".toRegex())
     }
 }

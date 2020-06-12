@@ -45,6 +45,7 @@ class Iden3Identity(private var identity: Identity) {
      *
      * @param verifierUrl: url of the verifier.
      * @param credentialId: credential id needed by the verifier for proving a claim.
+     * @param withZKProof: Boolean that indicates if zero-knowledge proof shoud be used or not.
      * @param proveClaimListener: Listener of proofs received after proving a claim.
      *
      * @return Boolean that indicates if the claim has been proven or not.
