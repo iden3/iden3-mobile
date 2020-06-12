@@ -1,0 +1,537 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		95C4BE5024934A86005B329D /* Iden3IdentityFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE4F24934A86005B329D /* Iden3IdentityFactory.swift */; };
+		95C4BE5124934A86005B329D /* Iden3IdentityFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE4F24934A86005B329D /* Iden3IdentityFactory.swift */; };
+		95C4BE5324934F3B005B329D /* Iden3Identity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5224934F3B005B329D /* Iden3Identity.swift */; };
+		95C4BE5424934F3B005B329D /* Iden3Identity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5224934F3B005B329D /* Iden3Identity.swift */; };
+		95C4BE56249353D2005B329D /* Iden3EventDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE55249353D2005B329D /* Iden3EventDelegate.swift */; };
+		95C4BE57249353D2005B329D /* Iden3EventDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE55249353D2005B329D /* Iden3EventDelegate.swift */; };
+		95C4BE5924935426005B329D /* Iden3Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5824935426005B329D /* Iden3Event.swift */; };
+		95C4BE5A24935426005B329D /* Iden3Event.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5824935426005B329D /* Iden3Event.swift */; };
+		95C4BE5C24935680005B329D /* Iden3Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5B24935680005B329D /* Iden3Error.swift */; };
+		95C4BE5D24935680005B329D /* Iden3Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5B24935680005B329D /* Iden3Error.swift */; };
+		95C4BE5F24936D9D005B329D /* Iden3Ticket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5E24936D9C005B329D /* Iden3Ticket.swift */; };
+		95C4BE6024936D9D005B329D /* Iden3Ticket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE5E24936D9C005B329D /* Iden3Ticket.swift */; };
+		95C4BE6224937161005B329D /* Iden3ProveClaimDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE6124937161005B329D /* Iden3ProveClaimDelegate.swift */; };
+		95C4BE6324937161005B329D /* Iden3ProveClaimDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE6124937161005B329D /* Iden3ProveClaimDelegate.swift */; };
+		95C4BE65249371C7005B329D /* Iden3TicketDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */; };
+		95C4BE66249371C7005B329D /* Iden3TicketDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */; };
+		95E57AA324868794007BA2CE /* iden3CoreSDK.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95E57A9924868794007BA2CE /* iden3CoreSDK.framework */; };
+		95E57AA824868794007BA2CE /* iden3CoreSDKTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E57AA724868794007BA2CE /* iden3CoreSDKTests.swift */; };
+		95E57AAA24868794007BA2CE /* iden3CoreSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 95E57A9C24868794007BA2CE /* iden3CoreSDK.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		95E57AB724869DE4007BA2CE /* Iden3mobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95E57AB624869DE4007BA2CE /* Iden3mobile.framework */; };
+		95E57AB824869DFD007BA2CE /* Iden3mobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95E57AB624869DE4007BA2CE /* Iden3mobile.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		95E57AA424868794007BA2CE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 95E57A9024868794007BA2CE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 95E57A9824868794007BA2CE;
+			remoteInfo = "mobile core sdk";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		95C4BE4F24934A86005B329D /* Iden3IdentityFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Iden3IdentityFactory.swift; sourceTree = "<group>"; };
+		95C4BE5224934F3B005B329D /* Iden3Identity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Iden3Identity.swift; sourceTree = "<group>"; };
+		95C4BE55249353D2005B329D /* Iden3EventDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Iden3EventDelegate.swift; sourceTree = "<group>"; };
+		95C4BE5824935426005B329D /* Iden3Event.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3Event.swift; sourceTree = "<group>"; };
+		95C4BE5B24935680005B329D /* Iden3Error.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Iden3Error.swift; sourceTree = "<group>"; };
+		95C4BE5E24936D9C005B329D /* Iden3Ticket.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3Ticket.swift; sourceTree = "<group>"; };
+		95C4BE6124937161005B329D /* Iden3ProveClaimDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3ProveClaimDelegate.swift; sourceTree = "<group>"; };
+		95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3TicketDelegate.swift; sourceTree = "<group>"; };
+		95E57A9924868794007BA2CE /* iden3CoreSDK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = iden3CoreSDK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		95E57A9C24868794007BA2CE /* iden3CoreSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iden3CoreSDK.h; sourceTree = "<group>"; };
+		95E57A9D24868794007BA2CE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		95E57AA224868794007BA2CE /* iden3CoreSDKTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iden3CoreSDKTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		95E57AA724868794007BA2CE /* iden3CoreSDKTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iden3CoreSDKTests.swift; sourceTree = "<group>"; };
+		95E57AA924868794007BA2CE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		95E57AB624869DE4007BA2CE /* Iden3mobile.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Iden3mobile.framework; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		95E57A9624868794007BA2CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95E57AB724869DE4007BA2CE /* Iden3mobile.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		95E57A9F24868794007BA2CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95E57AB824869DFD007BA2CE /* Iden3mobile.framework in Frameworks */,
+				95E57AA324868794007BA2CE /* iden3CoreSDK.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		95E57A8F24868794007BA2CE = {
+			isa = PBXGroup;
+			children = (
+				95E57A9B24868794007BA2CE /* iden3CoreSDK */,
+				95E57AA624868794007BA2CE /* iden3CoreSDKTests */,
+				95E57A9A24868794007BA2CE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		95E57A9A24868794007BA2CE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				95E57A9924868794007BA2CE /* iden3CoreSDK.framework */,
+				95E57AA224868794007BA2CE /* iden3CoreSDKTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		95E57A9B24868794007BA2CE /* iden3CoreSDK */ = {
+			isa = PBXGroup;
+			children = (
+				95E57AB624869DE4007BA2CE /* Iden3mobile.framework */,
+				95E57A9C24868794007BA2CE /* iden3CoreSDK.h */,
+				95E57A9D24868794007BA2CE /* Info.plist */,
+				95C4BE4F24934A86005B329D /* Iden3IdentityFactory.swift */,
+				95C4BE5224934F3B005B329D /* Iden3Identity.swift */,
+				95C4BE5824935426005B329D /* Iden3Event.swift */,
+				95C4BE55249353D2005B329D /* Iden3EventDelegate.swift */,
+				95C4BE5B24935680005B329D /* Iden3Error.swift */,
+				95C4BE6124937161005B329D /* Iden3ProveClaimDelegate.swift */,
+				95C4BE5E24936D9C005B329D /* Iden3Ticket.swift */,
+				95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */,
+			);
+			path = iden3CoreSDK;
+			sourceTree = "<group>";
+		};
+		95E57AA624868794007BA2CE /* iden3CoreSDKTests */ = {
+			isa = PBXGroup;
+			children = (
+				95E57AA724868794007BA2CE /* iden3CoreSDKTests.swift */,
+				95E57AA924868794007BA2CE /* Info.plist */,
+			);
+			path = iden3CoreSDKTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		95E57A9424868794007BA2CE /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95E57AAA24868794007BA2CE /* iden3CoreSDK.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		95E57A9824868794007BA2CE /* iden3CoreSDK */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 95E57AAD24868794007BA2CE /* Build configuration list for PBXNativeTarget "iden3CoreSDK" */;
+			buildPhases = (
+				95E57A9424868794007BA2CE /* Headers */,
+				95E57A9524868794007BA2CE /* Sources */,
+				95E57A9624868794007BA2CE /* Frameworks */,
+				95E57A9724868794007BA2CE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = iden3CoreSDK;
+			productName = "mobile core sdk";
+			productReference = 95E57A9924868794007BA2CE /* iden3CoreSDK.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		95E57AA124868794007BA2CE /* iden3CoreSDKTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 95E57AB024868794007BA2CE /* Build configuration list for PBXNativeTarget "iden3CoreSDKTests" */;
+			buildPhases = (
+				95E57A9E24868794007BA2CE /* Sources */,
+				95E57A9F24868794007BA2CE /* Frameworks */,
+				95E57AA024868794007BA2CE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				95E57AA524868794007BA2CE /* PBXTargetDependency */,
+			);
+			name = iden3CoreSDKTests;
+			productName = "mobile core sdkTests";
+			productReference = 95E57AA224868794007BA2CE /* iden3CoreSDKTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		95E57A9024868794007BA2CE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1130;
+				LastUpgradeCheck = 1130;
+				ORGANIZATIONNAME = Iden3;
+				TargetAttributes = {
+					95E57A9824868794007BA2CE = {
+						CreatedOnToolsVersion = 11.3.1;
+						LastSwiftMigration = 1130;
+					};
+					95E57AA124868794007BA2CE = {
+						CreatedOnToolsVersion = 11.3.1;
+					};
+				};
+			};
+			buildConfigurationList = 95E57A9324868794007BA2CE /* Build configuration list for PBXProject "iden3CoreSDK" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 95E57A8F24868794007BA2CE;
+			productRefGroup = 95E57A9A24868794007BA2CE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				95E57A9824868794007BA2CE /* iden3CoreSDK */,
+				95E57AA124868794007BA2CE /* iden3CoreSDKTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		95E57A9724868794007BA2CE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		95E57AA024868794007BA2CE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		95E57A9524868794007BA2CE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95C4BE5924935426005B329D /* Iden3Event.swift in Sources */,
+				95C4BE6224937161005B329D /* Iden3ProveClaimDelegate.swift in Sources */,
+				95C4BE5C24935680005B329D /* Iden3Error.swift in Sources */,
+				95C4BE56249353D2005B329D /* Iden3EventDelegate.swift in Sources */,
+				95C4BE5024934A86005B329D /* Iden3IdentityFactory.swift in Sources */,
+				95C4BE5324934F3B005B329D /* Iden3Identity.swift in Sources */,
+				95C4BE65249371C7005B329D /* Iden3TicketDelegate.swift in Sources */,
+				95C4BE5F24936D9D005B329D /* Iden3Ticket.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		95E57A9E24868794007BA2CE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95C4BE6324937161005B329D /* Iden3ProveClaimDelegate.swift in Sources */,
+				95C4BE5D24935680005B329D /* Iden3Error.swift in Sources */,
+				95C4BE6024936D9D005B329D /* Iden3Ticket.swift in Sources */,
+				95C4BE66249371C7005B329D /* Iden3TicketDelegate.swift in Sources */,
+				95C4BE5124934A86005B329D /* Iden3IdentityFactory.swift in Sources */,
+				95C4BE5424934F3B005B329D /* Iden3Identity.swift in Sources */,
+				95E57AA824868794007BA2CE /* iden3CoreSDKTests.swift in Sources */,
+				95C4BE5A24935426005B329D /* Iden3Event.swift in Sources */,
+				95C4BE57249353D2005B329D /* Iden3EventDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		95E57AA524868794007BA2CE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 95E57A9824868794007BA2CE /* iden3CoreSDK */;
+			targetProxy = 95E57AA424868794007BA2CE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		95E57AAB24868794007BA2CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		95E57AAC24868794007BA2CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		95E57AAE24868794007BA2CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 7MVPX2G76C;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
+					"$(PROJECT_DIR)/iden3CoreSDK",
+				);
+				INFOPLIST_FILE = iden3CoreSDK/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.iden3.iden3coresdk;
+				PRODUCT_NAME = iden3CoreSDK;
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		95E57AAF24868794007BA2CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 7MVPX2G76C;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
+					"$(PROJECT_DIR)/iden3CoreSDK",
+				);
+				INFOPLIST_FILE = iden3CoreSDK/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = io.iden3.iden3coresdk;
+				PRODUCT_NAME = iden3CoreSDK;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		95E57AB124868794007BA2CE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7MVPX2G76C;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
+					"$(PROJECT_DIR)/iden3CoreSDK",
+				);
+				INFOPLIST_FILE = iden3CoreSDKTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "io.iden3.mobile-core-sdkTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		95E57AB224868794007BA2CE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7MVPX2G76C;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
+					"$(PROJECT_DIR)/iden3CoreSDK",
+				);
+				INFOPLIST_FILE = iden3CoreSDKTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "io.iden3.mobile-core-sdkTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		95E57A9324868794007BA2CE /* Build configuration list for PBXProject "iden3CoreSDK" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				95E57AAB24868794007BA2CE /* Debug */,
+				95E57AAC24868794007BA2CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		95E57AAD24868794007BA2CE /* Build configuration list for PBXNativeTarget "iden3CoreSDK" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				95E57AAE24868794007BA2CE /* Debug */,
+				95E57AAF24868794007BA2CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		95E57AB024868794007BA2CE /* Build configuration list for PBXNativeTarget "iden3CoreSDKTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				95E57AB124868794007BA2CE /* Debug */,
+				95E57AB224868794007BA2CE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 95E57A9024868794007BA2CE /* Project object */;
+}

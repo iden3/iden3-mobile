@@ -13,3 +13,4 @@ vendor/
 ios/iden3CoreSDK.xcodeproj/project.xcworkspace
 ios/iden3CoreSDK.xcodeproj/xcshareddata
 ios/iden3CoreSDK.xcodeproj/xcuserdata
+ios/iden3CoreSDK/Iden3mobile.framework
