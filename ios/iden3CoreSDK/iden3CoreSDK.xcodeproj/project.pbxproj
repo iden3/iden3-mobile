@@ -23,11 +23,11 @@
 		95C4BE6324937161005B329D /* Iden3ProveClaimDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE6124937161005B329D /* Iden3ProveClaimDelegate.swift */; };
 		95C4BE65249371C7005B329D /* Iden3TicketDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */; };
 		95C4BE66249371C7005B329D /* Iden3TicketDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */; };
+		95C4BEB524961DA5005B329D /* Iden3mobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95C4BEB424961DA5005B329D /* Iden3mobile.framework */; };
+		95C4BEB624961DA5005B329D /* Iden3mobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95C4BEB424961DA5005B329D /* Iden3mobile.framework */; };
 		95E57AA324868794007BA2CE /* iden3CoreSDK.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95E57A9924868794007BA2CE /* iden3CoreSDK.framework */; };
 		95E57AA824868794007BA2CE /* iden3CoreSDKTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E57AA724868794007BA2CE /* iden3CoreSDKTests.swift */; };
 		95E57AAA24868794007BA2CE /* iden3CoreSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 95E57A9C24868794007BA2CE /* iden3CoreSDK.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		95E57AB724869DE4007BA2CE /* Iden3mobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95E57AB624869DE4007BA2CE /* Iden3mobile.framework */; };
-		95E57AB824869DFD007BA2CE /* Iden3mobile.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95E57AB624869DE4007BA2CE /* Iden3mobile.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,13 +49,13 @@
 		95C4BE5E24936D9C005B329D /* Iden3Ticket.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3Ticket.swift; sourceTree = "<group>"; };
 		95C4BE6124937161005B329D /* Iden3ProveClaimDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3ProveClaimDelegate.swift; sourceTree = "<group>"; };
 		95C4BE64249371C7005B329D /* Iden3TicketDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Iden3TicketDelegate.swift; sourceTree = "<group>"; };
+		95C4BEB424961DA5005B329D /* Iden3mobile.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Iden3mobile.framework; sourceTree = "<group>"; };
 		95E57A9924868794007BA2CE /* iden3CoreSDK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = iden3CoreSDK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		95E57A9C24868794007BA2CE /* iden3CoreSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iden3CoreSDK.h; sourceTree = "<group>"; };
 		95E57A9D24868794007BA2CE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		95E57AA224868794007BA2CE /* iden3CoreSDKTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iden3CoreSDKTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		95E57AA724868794007BA2CE /* iden3CoreSDKTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iden3CoreSDKTests.swift; sourceTree = "<group>"; };
 		95E57AA924868794007BA2CE /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		95E57AB624869DE4007BA2CE /* Iden3mobile.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Iden3mobile.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,7 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				95E57AB724869DE4007BA2CE /* Iden3mobile.framework in Frameworks */,
+				95C4BEB524961DA5005B329D /* Iden3mobile.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,8 +71,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				95E57AB824869DFD007BA2CE /* Iden3mobile.framework in Frameworks */,
 				95E57AA324868794007BA2CE /* iden3CoreSDK.framework in Frameworks */,
+				95C4BEB624961DA5005B329D /* Iden3mobile.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,7 +100,7 @@
 		95E57A9B24868794007BA2CE /* iden3CoreSDK */ = {
 			isa = PBXGroup;
 			children = (
-				95E57AB624869DE4007BA2CE /* Iden3mobile.framework */,
+				95C4BEB424961DA5005B329D /* Iden3mobile.framework */,
 				95E57A9C24868794007BA2CE /* iden3CoreSDK.h */,
 				95E57A9D24868794007BA2CE /* Info.plist */,
 				95C4BE4F24934A86005B329D /* Iden3IdentityFactory.swift */,
@@ -307,6 +307,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_BITCODE = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -370,6 +371,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -404,7 +406,6 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
 					"$(PROJECT_DIR)/iden3CoreSDK",
 				);
 				INFOPLIST_FILE = iden3CoreSDK/Info.plist;
@@ -435,7 +436,6 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
 					"$(PROJECT_DIR)/iden3CoreSDK",
 				);
 				INFOPLIST_FILE = iden3CoreSDK/Info.plist;
@@ -461,7 +461,6 @@
 				DEVELOPMENT_TEAM = 7MVPX2G76C;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
 					"$(PROJECT_DIR)/iden3CoreSDK",
 				);
 				INFOPLIST_FILE = iden3CoreSDKTests/Info.plist;
@@ -485,7 +484,6 @@
 				DEVELOPMENT_TEAM = 7MVPX2G76C;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(PROJECT_DIR)/mobile\\ core\\ sdk",
 					"$(PROJECT_DIR)/iden3CoreSDK",
 				);
 				INFOPLIST_FILE = iden3CoreSDKTests/Info.plist;
