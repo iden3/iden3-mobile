@@ -1,16 +1,15 @@
 //
 //  Iden3EventDelegate.swift
-//  iden3CoreSDK
+//  iden3
 //
 //  Created by Iden3 on 12/06/2020.
-//  Copyright © 2020 Iden3. All rights reserved.
 //
 
 import Foundation
 
 public protocol Iden3ProveClaimDelegate : NSObjectProtocol {
     
-    func onClaimProofReceived(proved: Bool)
+    func onVerifierResponse(verified: Bool)
 
     func onError(error: Error)
 }

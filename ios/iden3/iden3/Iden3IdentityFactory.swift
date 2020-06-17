@@ -1,15 +1,14 @@
 //
 //  Iden3IdentityFactory.swift
-//  iden3CoreSDK
+//  iden3
 //
 //  Created by Iden3 on 12/06/2020.
-//  Copyright © 2020 Iden3. All rights reserved.
 //
 
 import Foundation
 import Iden3mobile
 
-/// Main class to initialize and setup Iden3CoreSDK framework.
+/// Main class to initialize and setup Iden3 framework.
 
 public final class Iden3IdentityFactory {
     
@@ -30,7 +29,7 @@ public final class Iden3IdentityFactory {
     
     // MARK: - Initialization
     
-    /// Initializes de Iden3CoreSDK framework.
+    /// Initializes de Iden3 framework.
     ///
     /// - parameters:
     ///   - web3Url: String the Web3 url.
@@ -72,9 +71,9 @@ public final class Iden3IdentityFactory {
             if (alias.count == 0 || !isAlphaNumeric(alias) || password.count == 0) {
                 throw Iden3Error.IllegalArgumentError("Iden3 method called with not valid arguments")
             } else {
-                let identityPath : String = self.storePath + "/identities/" + alias
+                let identityPath : String = self.storePath + "identities/" + alias
                 let identityPathURL = URL(string: identityPath)!
-                let sharedPath : String = self.storePath + "/shared/"
+                let sharedPath : String = self.storePath + "shared/"
                 let sharedPathURL = URL(string: sharedPath)!
                 
                 if FileManager.default.fileExists(atPath: identityPathURL.absoluteString) {
@@ -82,9 +81,9 @@ public final class Iden3IdentityFactory {
                    do {
                       let filePaths = try FileManager.default.contentsOfDirectory(atPath: identityPathURL.absoluteString)
                       for filePath in filePaths {
-                          try FileManager.default.removeItem(atPath: identityPathURL.absoluteString + filePath)
+                        try FileManager.default.removeItem(atPath: identityPathURL.appendingPathComponent(filePath).absoluteString)
                       }
-                      try FileManager.default.removeItem(at: identityPathURL)
+                      try FileManager.default.removeItem(atPath: identityPathURL.absoluteString)
                    } catch {
                       print("Could not clear identity folder: \(error)")
                       throw Iden3Error.GenericError("There was an error while creating the identity")
@@ -118,7 +117,7 @@ public final class Iden3IdentityFactory {
                 }
             }
         } else {
-            throw Iden3Error.IllegalStateError("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
+            throw Iden3Error.IllegalStateError("Iden3 is not initialized. Please, call initialize method before doing this call")
         }
     }
     
@@ -165,7 +164,7 @@ public final class Iden3IdentityFactory {
                 }
             }
         } else {
-            throw Iden3Error.IllegalStateError("Iden3 API is not initialized. Please, call initializeAPI method before doing this call")
+            throw Iden3Error.IllegalStateError("Iden3 is not initialized. Please, call initialize method before doing this call")
         }
     }
     

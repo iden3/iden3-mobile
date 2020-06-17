@@ -41,7 +41,7 @@ class Iden3InstrumentedTest {
     fun setup() {
         instrumentationCtx = InstrumentationRegistry.getInstrumentation().targetContext
         storePath = instrumentationCtx.filesDir.absolutePath
-        iden3IdentityFactory = Iden3IdentityFactory()
+        iden3IdentityFactory = Iden3IdentityFactory.instance
     }
 
     @Test
