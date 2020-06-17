@@ -46,7 +46,7 @@
 		74BDC5BE869C006A55B92025 /* Pods_iden3ExampleTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iden3ExampleTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7A920FC70129C5C61044228B /* Pods-iden3Example-iden3ExampleUITests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iden3Example-iden3ExampleUITests.debug.xcconfig"; path = "Target Support Files/Pods-iden3Example-iden3ExampleUITests/Pods-iden3Example-iden3ExampleUITests.debug.xcconfig"; sourceTree = "<group>"; };
 		915965D9AB43D2D9B4131DF9 /* Pods-Iden3CoreSDKExample-Iden3CoreSDKExampleUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Iden3CoreSDKExample-Iden3CoreSDKExampleUITests.release.xcconfig"; path = "Target Support Files/Pods-Iden3CoreSDKExample-Iden3CoreSDKExampleUITests/Pods-Iden3CoreSDKExample-Iden3CoreSDKExampleUITests.release.xcconfig"; sourceTree = "<group>"; };
-		9506CD3E24965D110051501C /* iden3CoreSDK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = iden3CoreSDK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		9506CD3E24965D110051501C /* iden3.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = iden3.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		95C4BE7024961B13005B329D /* iden3Example.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iden3Example.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		95C4BE7324961B13005B329D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		95C4BE7524961B13005B329D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -174,7 +174,7 @@
 		95C4BEB124961CDE005B329D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				9506CD3E24965D110051501C /* iden3CoreSDK.framework */,
+				9506CD3E24965D110051501C /* iden3.framework */,
 				DF3769B4325924AA02D24466 /* Pods_iden3Example.framework */,
 				E4BB34F7DC93AC048A210EEE /* Pods_iden3Example_iden3ExampleUITests.framework */,
 				74BDC5BE869C006A55B92025 /* Pods_iden3ExampleTests.framework */,
