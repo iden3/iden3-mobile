@@ -116,6 +116,7 @@ iOSInjectionProject/
 
 # Frameworks
 *Iden3mobile.framework
-ios/iden3CoreSDK/iden3CoreSDK.xcodeproj/project.xcworkspace/xcshareddata
-ios/iden3CoreSDK/iden3CoreSDK.xcodeproj/xcshareddata
-ios/iden3CoreSDK/iden3CoreSDK.xcodeproj/project.xcworkspace
+ios/iden3/iden3.xcodeproj/project.xcworkspace/xcshareddata
+ios/iden3/iden3.xcodeproj/xcshareddata
+ios/iden3CoreSDK/iden3.xcodeproj/project.xcworkspace
+Preferences.plist

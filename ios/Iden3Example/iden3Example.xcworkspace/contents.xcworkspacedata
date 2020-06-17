@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:/Users/crypto-x/Dev/crypto-x/iden3/workspace-wallet/iden3-mobile/ios/iden3Example/iden3Example.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Pods/Pods.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:iden3Example.xcodeproj">
+   </FileRef>
+</Workspace>
