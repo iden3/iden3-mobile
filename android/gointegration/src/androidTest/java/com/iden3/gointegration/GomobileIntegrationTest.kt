@@ -52,15 +52,12 @@ class GomobileIntegrationTest {
                     "password",
                     web3Url,
                     1000,
-                    null,
-                    object : Sender {
-                        override fun send(event: Event) {
-                            eventCounter++
-                            Log.i("fullFlow","EVENT RECEIVED: ${event.ticketId}. $eventCounter EVENTS RECEIVED SO FAR")
-                            assertEquals(null, event.err)
-                        }
-                    }
-                )
+                    null
+                ) { event ->
+                    eventCounter++
+                    Log.i("fullFlow","EVENT RECEIVED: ${event.ticketId}. $eventCounter EVENTS RECEIVED SO FAR")
+                    assertEquals(null, event.err)
+                }
             } catch (e: Exception) {
                 assertEquals(null, e)
                 null
@@ -112,30 +109,29 @@ class GomobileIntegrationTest {
         var provedClaimsZK = 0
         for (id in ids){
             id?.claimDB?.iterateClaimsJSON(object: ClaimDBIterFner{
-                override fun fn(key: String, claim: String): Boolean{
+                override fun fn(claim: String, keys: String): Boolean{
                     // Prove claim
-                    id.proveClaimWithCb(verifierUrl, key, object: CallbackProveClaim {
+                    id.proveClaimWithCb(verifierUrl, claim, object: CallbackProveClaim {
                         override fun fn(success: Boolean, e: Exception?) {
-                            Log.i("fullFlow", "Verify claim: $key. Success? $success. Error? $e")
+                            Log.i("fullFlow", "Verify claim: $claim. Success? $success. Error? $e")
                             assertEquals(null, e)
                             assertEquals(true, success)
                             provedClaims++
                         }
                     })
                     // Prove claim with ZK (Zero Knowledge)
-                    id.proveClaimZKWithCb(verifierUrl, key, object: CallbackProveClaim {
-                        override fun fn(success: Boolean, e: Exception?) {
-                            Log.i("fullFlow", "Verify claim ZK: $key. Success? $success. Error? $e")
+                    id.proveClaimZKWithCb(verifierUrl, claim,
+                        CallbackProveClaim { success, e ->
+                            Log.i("fullFlow", "Verify claim ZK: $claim. Success? $success. Error? $e")
                             assertEquals(null, e)
                             assertEquals(true, success)
                             provedClaimsZK++
-                        }
-                    })
+                        })
                     return true
                 }
             })
         }
-        // Wait untilall claims have been proved without ZK
+        // Wait until all claims have been proved without ZK
         while (provedClaims < nIdentities*nClaimsPerId){
             Log.i("fullFlow", "Waiting to prove claims without ZK: $provedClaims / ${nIdentities*nClaimsPerId}")
             Thread.sleep(2_000)
@@ -168,16 +164,14 @@ class GomobileIntegrationTest {
         ticketCounter = 0
         for (id in ids){
             val data = random()
-            id?.requestClaimWithCb(issuerUrl, data, object: CallbackRequestClaim{
-                override fun fn(ticket: Ticket?, e: Exception?) {
-                    assertNotEquals(null, ticket)
-                    assertEquals(null, e)
-                    Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED.")
-                    // Cancel ticket
-                    id.tickets.cancelTicket(ticket?.id)
-                    ticketCounter++
-                }
-            })
+            id?.requestClaimWithCb(issuerUrl, data) { ticket, e ->
+                assertNotEquals(null, ticket)
+                assertEquals(null, e)
+                Log.i("fullFlow","REQUEST CLAIM TICKET RECEIVED.")
+                // Cancel ticket
+                id.tickets.cancelTicket(ticket?.id)
+                ticketCounter++
+            }
         }
         while (ticketCounter < nIdentities){
             Log.i("fullFlow","WAITING FOR TICKETS TO BE GENERATED.")
@@ -190,15 +184,13 @@ class GomobileIntegrationTest {
         ticketCounter = 0
         var cancelledTicketCounter = 0
         for (id in ids){
-            id?.tickets?.iterate(object: TicketOperator{
-                override fun iterate(ticket: Ticket?): Boolean {
-                    ticketCounter++
-                    if(ticket?.status == Iden3mobile.TicketStatusCancel){
-                        cancelledTicketCounter++
-                    }
-                    return true
+            id?.tickets?.iterate { ticket ->
+                ticketCounter++
+                if(ticket?.status == Iden3mobile.TicketStatusCancel){
+                    cancelledTicketCounter++
                 }
-            })
+                true
+            }
         }
         assertEquals(nIdentities*nClaimsPerId + nIdentities, ticketCounter)
         assertEquals(nIdentities, cancelledTicketCounter)
@@ -230,13 +222,8 @@ class GomobileIntegrationTest {
                         sharedStorePath,
                         "password",
                         web3Url,
-                        1000,
-                        object : Sender {
-                            override fun send(event: Event) {
-                                fn(event)
-                            }
-                        }
-                )
+                        1000
+                ) { event -> fn(event) }
             } catch (e: Exception) {
                 assertEquals(null, e)
                 null

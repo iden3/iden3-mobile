@@ -1,0 +1,16 @@
+PODS:
+  - iden3 (0.0.1)
+
+DEPENDENCIES:
+  - iden3 (from `../iden3`)
+
+EXTERNAL SOURCES:
+  iden3:
+    :path: "../iden3"
+
+SPEC CHECKSUMS:
+  iden3: 76bd66c6582fc19e8bdbbc8a595fdb0a7b6cefbc
+
+PODFILE CHECKSUM: 00e28e4fceb0bbe2a1f1fd11f45eee7339969356
+
+COCOAPODS: 1.9.3
